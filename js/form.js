@@ -7,6 +7,7 @@ import {
   OPTIONS_STUDIO_DOL,
 } from './config.js';
 import { validateStep } from './validators.js';
+import { calculateQuote } from './pricing.js';
 
 export const state = {
   currentStep: 1,
@@ -333,6 +334,85 @@ registerRenderer(5, s => {
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
         <button class="btn btn-primary" data-action="next">다음</button>
+      </div>
+    </div>
+  `;
+});
+
+// ============================
+// Step 6: 견적 확인
+// ============================
+registerRenderer(6, s => {
+  const quote = calculateQuote({
+    product: s.data.product,
+    region: s.data.region,
+    options: s.data.options,
+    immediateDiscounts: s.data.immediateDiscounts,
+    promiseDiscounts: s.data.promiseDiscounts,
+    dolHasMainSnap: s.data.dolHasMainSnap,
+  });
+  const p = n => n.toLocaleString('ko-KR') + '원';
+  const product = PRODUCTS[s.data.product];
+  const optionsTable = product.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+
+  const optionLines = s.data.options.map(code => {
+    const o = optionsTable[code];
+    return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(o.amount)}</span></div>`;
+  }).join('');
+
+  const immediateLines = s.data.immediateDiscounts.map(code => {
+    const d = IMMEDIATE_DISCOUNTS[code];
+    const label = code === 'partner' && s.data.partnerCode ? `${d.name} (${s.data.partnerCode})` : d.name;
+    return `<div class="quote-line"><span>${label}</span><span>${p(d.amount)}</span></div>`;
+  }).join('');
+
+  const promiseLines = s.data.promiseDiscounts.map(code => {
+    const d = PROMISE_DISCOUNTS[code];
+    return `<div class="quote-line note"><span>${d.name} (약속)</span><span>${p(d.amount)}</span></div>`;
+  }).join('');
+
+  const travelLine = quote.travelFee === null
+    ? '<div class="quote-line"><span>출장비</span><span class="badge-warn">별도 문의</span></div>'
+    : quote.travelFee > 0
+      ? `<div class="quote-line"><span>출장비</span><span>+${p(quote.travelFee)}</span></div>`
+      : '';
+
+  const dolLine = quote.dolSurcharge > 0
+    ? `<div class="quote-line"><span>아이폰 단독 촬영</span><span>+${p(quote.dolSurcharge)}</span></div>`
+    : '';
+
+  const promiseNote = s.data.promiseDiscounts.length
+    ? `<div class="quote-line note"><span>후기 반영 시 잔금</span><span>${p(quote.balanceAfterReviews)}</span></div>`
+    : '';
+
+  const confirmChecked = s.data.quoteConfirmed ? 'checked' : '';
+
+  return `
+    <div class="card">
+      <h2>6. 견적 확인</h2>
+      <div class="quote-summary">
+        <div class="quote-line"><span>${product.name}</span><span>${p(quote.subtotal)}</span></div>
+        ${travelLine}
+        ${optionLines}
+        ${dolLine}
+        ${immediateLines}
+        <div class="quote-line total"><span>총액</span><span>${p(quote.total)}</span></div>
+        <div class="quote-line"><span>계약금 (고정)</span><span>${p(quote.deposit)}</span></div>
+        <div class="quote-line"><span><strong>잔금</strong></span><span><strong>${p(quote.balance)}</strong></span></div>
+        ${promiseLines}
+        ${promiseNote}
+      </div>
+      ${!quote.isQuoteFinal ? '<div class="info-box">출장비는 별도 문의 후 반영되므로, 위 총액에는 출장비가 포함되어 있지 않습니다.</div>' : ''}
+      <div class="field ${s.errors.quoteConfirmed ? 'has-error' : ''}">
+        <label class="checkbox-option ${s.data.quoteConfirmed ? 'selected' : ''}">
+          <input type="checkbox" data-bind="quoteConfirmed" ${confirmChecked}>
+          <span>위 금액으로 계약을 진행합니다.</span>
+        </label>
+        ${s.errors.quoteConfirmed ? `<div class="error">${s.errors.quoteConfirmed}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" data-action="prev">이전</button>
+        <button class="btn btn-primary" data-action="next">서명하기</button>
       </div>
     </div>
   `;
