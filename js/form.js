@@ -102,9 +102,25 @@ function attachCommonHandlers() {
 }
 
 function onDataChange() {
-  // 실시간 재렌더 필요한 경우 오버라이드 가능
-  const hook = afterRenderHooks['onChange_' + state.currentStep];
-  if (hook) hook(state);
+  // Never re-render on Step 7 — signature canvas would be recreated and stroke lost.
+  // Step 7's endStroke handler assigns to state.data.signature directly, but the
+  // agreed checkbox flows through here; skip re-render to preserve canvas state.
+  if (state.currentStep === 7) return;
+  // Re-render on data change so conditional fields (짝꿍코드, 그 외 info-box) appear
+  // immediately and `.selected` visual classes stay in sync. Preserve focus and
+  // caret position for text inputs so the user can keep typing without flicker.
+  const activeBind = document.activeElement?.dataset?.bind;
+  const selectionStart = document.activeElement?.selectionStart;
+  render();
+  if (activeBind) {
+    const el = document.querySelector(`[data-bind="${activeBind}"]`);
+    if (el && el.focus) {
+      el.focus();
+      if (selectionStart != null && el.setSelectionRange) {
+        try { el.setSelectionRange(selectionStart, selectionStart); } catch (e) {}
+      }
+    }
+  }
 }
 
 function goNext() {
