@@ -5,9 +5,12 @@ import {
   PROMISE_DISCOUNTS,
   OPTIONS_WEDDING,
   OPTIONS_STUDIO_DOL,
+  OWNER_INFO,
 } from './config.js';
 import { validateStep } from './validators.js';
 import { calculateQuote } from './pricing.js';
+import { generateContractPDF, downloadBlob } from './pdf.js';
+import { sendContractEmail } from './email.js';
 
 export const state = {
   currentStep: 1,
@@ -486,4 +489,108 @@ function _lastQuoteTotalMinusDeposit(s) {
 function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// ============================
+// Step 8: 완료
+// ============================
+const submissionState = { status: 'idle', error: null, pdfBlob: null, pdfFilename: null };
+
+registerRenderer(8, s => {
+  if (submissionState.status === 'idle') {
+    // 첫 진입 시 자동 제출
+    setTimeout(() => submitContract(), 100);
+    return `<div class="card"><h2>계약서 생성 중...</h2><p>잠시만 기다려주세요.</p></div>`;
+  }
+  if (submissionState.status === 'submitting') {
+    return `<div class="card"><h2>이메일 전송 중...</h2><p>PDF 생성 및 사장님께 발송하고 있습니다.</p></div>`;
+  }
+  if (submissionState.status === 'success') {
+    return `
+      <div class="card success-box">
+        <div class="check">✓</div>
+        <h2>계약이 완료되었습니다!</h2>
+        <p>계약서 PDF가 자동으로 다운로드되었으며, 사장님께도 전달되었습니다.</p>
+        <div class="info-box" style="text-align:left">
+          <strong>다음 단계:</strong><br>
+          아래 계좌로 <strong>계약금 100,000원</strong>을 입금해주시면 예약이 최종 확정됩니다.
+        </div>
+        <div style="text-align:left;padding:16px;background:#f4efe5;border-radius:8px;margin-top:12px">
+          <div><strong>계좌:</strong> ${OWNER_INFO.bankName} ${OWNER_INFO.bankAccount}</div>
+          <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
+          <div style="margin-top:8px"><strong>카카오톡:</strong> ${OWNER_INFO.kakaoContact}</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
+        </div>
+      </div>
+    `;
+  }
+  if (submissionState.status === 'partial') {
+    // 이메일 실패, PDF는 다운로드됨
+    return `
+      <div class="card success-box">
+        <div class="check" style="color:#f5a623">⚠</div>
+        <h2>계약서는 생성되었습니다</h2>
+        <p>PDF는 다운로드 완료되었으나, 이메일 자동 발송에 실패했습니다.</p>
+        <div class="info-box">
+          다운로드된 PDF 파일을 카카오톡으로 사장님(<strong>${OWNER_INFO.kakaoContact}</strong>)께 직접 전달해주세요.
+        </div>
+        <p style="color:#999;font-size:12px">에러: ${submissionState.error || ''}</p>
+        <div class="actions">
+          <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
+        </div>
+      </div>
+    `;
+  }
+  // error 상태
+  return `
+    <div class="card">
+      <h2>오류가 발생했습니다</h2>
+      <p>${submissionState.error || '알 수 없는 오류'}</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="retry-btn">다시 시도</button>
+      </div>
+    </div>
+  `;
+}, () => {
+  const redl = document.getElementById('redownload-btn');
+  if (redl) redl.addEventListener('click', () => {
+    if (submissionState.pdfBlob) downloadBlob(submissionState.pdfBlob, submissionState.pdfFilename);
+  });
+  const retry = document.getElementById('retry-btn');
+  if (retry) retry.addEventListener('click', () => {
+    submissionState.status = 'idle';
+    render();
+  });
+});
+
+async function submitContract() {
+  submissionState.status = 'submitting';
+  render();
+  try {
+    const result = await generateContractPDF(state.data);
+    submissionState.pdfBlob = result.blob;
+    submissionState.pdfFilename = result.filename;
+    downloadBlob(result.blob, result.filename);
+
+    try {
+      await sendContractEmail({
+        formData: state.data,
+        quote: result.quote,
+        pdfBase64: result.base64,
+        pdfFilename: result.filename,
+      });
+      submissionState.status = 'success';
+    } catch (emailErr) {
+      console.error('EmailJS 실패:', emailErr);
+      submissionState.error = emailErr.message;
+      submissionState.status = 'partial';
+    }
+  } catch (err) {
+    console.error('PDF 생성 실패:', err);
+    submissionState.error = err.message;
+    submissionState.status = 'error';
+  }
+  render();
 }
