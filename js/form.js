@@ -418,6 +418,71 @@ registerRenderer(6, s => {
   `;
 });
 
+// ============================
+// Step 7: 서명
+// ============================
+registerRenderer(7, s => {
+  const agreedChecked = s.data.agreed ? 'checked' : '';
+  return `
+    <div class="card">
+      <h2>7. 계약 동의 및 서명</h2>
+      <div class="info-box">
+        <strong>${PRODUCTS[s.data.product].name}</strong> 상품을 선택하셨습니다.<br>
+        계약금 100,000원, 잔금 ${(_lastQuoteTotalMinusDeposit(s)).toLocaleString('ko-KR')}원.<br>
+        예식일: ${s.data.eventDate} ${s.data.eventTime} / 장소: ${escapeAttr(s.data.venue)}
+      </div>
+      <div class="field ${s.errors.agreed ? 'has-error' : ''}">
+        <label class="checkbox-option ${s.data.agreed ? 'selected' : ''}">
+          <input type="checkbox" data-bind="agreed" ${agreedChecked}>
+          <span>위 계약 내용을 충분히 이해했으며, 상품 구성·결제·환불·데이터 보관 규정 모두에 동의합니다.</span>
+        </label>
+        ${s.errors.agreed ? `<div class="error">${s.errors.agreed}</div>` : ''}
+      </div>
+      <h3>서명 *</h3>
+      <div class="signature-wrap ${s.errors.signature ? 'has-error' : ''}" style="${s.errors.signature ? 'border-color:#c00' : ''}">
+        <canvas id="signature-canvas" class="signature-pad"></canvas>
+      </div>
+      <div class="signature-actions">
+        <button type="button" class="btn-clear" id="clear-signature">다시 서명</button>
+      </div>
+      ${s.errors.signature ? `<div class="error">${s.errors.signature}</div>` : ''}
+      <div class="actions">
+        <button class="btn btn-secondary" data-action="prev">이전</button>
+        <button class="btn btn-primary" data-action="next">계약 완료</button>
+      </div>
+    </div>
+  `;
+}, (s) => {
+  // afterRender: signature_pad 초기화
+  const canvas = document.getElementById('signature-canvas');
+  if (!canvas) return;
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  canvas.width = canvas.offsetWidth * ratio;
+  canvas.height = canvas.offsetHeight * ratio;
+  canvas.getContext('2d').scale(ratio, ratio);
+  const pad = new SignaturePad(canvas, { backgroundColor: '#fff' });
+  if (s.data.signature) pad.fromDataURL(s.data.signature);
+  pad.addEventListener('endStroke', () => {
+    s.data.signature = pad.toDataURL('image/png');
+  });
+  document.getElementById('clear-signature').addEventListener('click', () => {
+    pad.clear();
+    s.data.signature = '';
+  });
+});
+
+function _lastQuoteTotalMinusDeposit(s) {
+  const q = calculateQuote({
+    product: s.data.product,
+    region: s.data.region,
+    options: s.data.options,
+    immediateDiscounts: s.data.immediateDiscounts,
+    promiseDiscounts: s.data.promiseDiscounts,
+    dolHasMainSnap: s.data.dolHasMainSnap,
+  });
+  return q.balance;
+}
+
 function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
