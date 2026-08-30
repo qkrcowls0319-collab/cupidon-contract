@@ -136,4 +136,4 @@ export const OWNER_INFO = {
 // Google Sheets 자동 저장 웹훅 URL
 // 세팅 방법은 README의 "Google Sheets 신청 이력 관리" 섹션 참고
 // URL을 비워두면 자동 저장 기능은 비활성화됨 (계약서 흐름은 정상 작동)
-export const SHEETS_WEBHOOK_URL = '';
+export const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzYuEIbqfX1mnq1fwxTQzA-STv7c5q0Hxvf9pDVGx5c6iLitEq8TKkoBUpxn69obuSh9A/exec';
