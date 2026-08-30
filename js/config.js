@@ -130,7 +130,7 @@ export const OWNER_INFO = {
   bankAccount: '1002-5123-8652',
   accountHolder: '큐피돈 스냅',
   // 카카오톡 채널 홈 URL (버튼 클릭 시 이 링크로 이동)
-  kakaoChannelUrl: 'http://pf.kakao.com/_decupidon',
+  kakaoChannelUrl: 'http://pf.kakao.com/_jVYdn/chat',
   // 화면 표시명
   kakaoDisplayName: '큐피돈 스냅 카카오톡 채널',
 };
