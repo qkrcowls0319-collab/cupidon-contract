@@ -3,7 +3,9 @@ import { calculateQuote } from './pricing.js';
 
 /**
  * 계약서 PDF를 생성하고 Blob(및 다운로드용 dataURL, base64)를 반환.
- * html2canvas로 hidden div를 캡처 → jsPDF에 이미지 삽입.
+ * html2canvas로 hidden div를 캡처 → 페이지별로 슬라이스해서 jsPDF에 삽입.
+ * 페이지 경계에서 텍스트가 잘려 깨지지 않도록 각 페이지마다 원본 캔버스에서
+ * 해당 세로 구간을 크롭한 새 캔버스를 만들어 이미지로 삽입.
  */
 export async function generateContractPDF(formData) {
   const quote = calculateQuote({
@@ -19,44 +21,63 @@ export async function generateContractPDF(formData) {
 
   const html = renderContractHTML({ formData, quote, todayStr });
 
-  // hidden div에 삽입
   const renderArea = document.getElementById('pdf-render-area');
   renderArea.innerHTML = html;
   const target = renderArea.firstElementChild;
 
-  // html2canvas로 캡처
   const canvas = await html2canvas(target, {
     scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
   });
 
-  const imgData = canvas.toDataURL('image/png');
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+  const pageWidth = pdf.internal.pageSize.getWidth();   // 210 mm
+  const pageHeight = pdf.internal.pageSize.getHeight(); // 297 mm
 
-  const imgWidth = pageWidth - 20;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const margin = 10; // mm
+  const contentWidthMm = pageWidth - margin * 2;
+  const contentHeightMm = pageHeight - margin * 2;
 
-  // A4 한 페이지에 들어가는지 확인, 넘치면 여러 페이지 분할
-  let heightLeft = imgHeight;
-  let position = 10;
-  pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-  heightLeft -= (pageHeight - 20);
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight + 10;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-    heightLeft -= (pageHeight - 20);
+  // canvas 픽셀 → mm 환산
+  const pxPerMm = canvas.width / contentWidthMm;
+  const pageContentHeightPx = Math.floor(contentHeightMm * pxPerMm);
+
+  // 세로로 페이지 단위 크롭
+  let sourceY = 0;
+  let pageIndex = 0;
+  while (sourceY < canvas.height) {
+    const remaining = canvas.height - sourceY;
+    const sliceHeightPx = Math.min(pageContentHeightPx, remaining);
+
+    // 페이지별 임시 캔버스에 원본 캔버스의 해당 세로 구간만 그림
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = sliceHeightPx;
+    const ctx = pageCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+    ctx.drawImage(
+      canvas,
+      0, sourceY, canvas.width, sliceHeightPx,
+      0, 0, canvas.width, sliceHeightPx
+    );
+
+    const sliceHeightMm = sliceHeightPx / pxPerMm;
+    const pageImgData = pageCanvas.toDataURL('image/png');
+
+    if (pageIndex > 0) pdf.addPage();
+    pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidthMm, sliceHeightMm, undefined, 'FAST');
+
+    sourceY += sliceHeightPx;
+    pageIndex += 1;
   }
 
   const blob = pdf.output('blob');
   const base64 = pdf.output('datauristring').split(',')[1];
   const filename = `큐피돈_계약서_${PRODUCT_LABEL(formData.product)}_${sanitizeFilename(formData.customerName)}_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.pdf`;
 
-  // 화면 정리
   renderArea.innerHTML = '';
 
   return { blob, base64, filename, quote };

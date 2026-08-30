@@ -563,36 +563,35 @@ registerRenderer(8, s => {
     return `<div class="card"><h2>PDF 생성 중...</h2><p>계약서를 만들고 있습니다.</p></div>`;
   }
   if (submissionState.status === 'success') {
-    const productName = PRODUCTS[s.data.product]?.name || '';
     return `
       <div class="card success-box">
         <div class="check">✓</div>
-        <h2>계약서가 준비되었습니다!</h2>
-        <p style="color:var(--text-mute)">서명된 계약서 PDF가 다운로드되었습니다.</p>
+        <h2>신청이 완료되었습니다!</h2>
+        <p style="color:var(--text-mute)">서명된 계약서 PDF가 참고용으로 다운로드되었습니다.</p>
 
         <div class="send-primary-box">
-          <div class="send-primary-title">📤 이제 사장님께 계약서를 전송해주세요</div>
-          <button id="share-pdf-btn" class="btn btn-share">
-            📎 계약서 사장님께 전송하기
-          </button>
-          <div id="share-hint" class="send-hint">
-            <span class="share-mobile-hint">모바일: 공유 시트에서 <strong>카카오톡</strong> 선택 후 큐피돈 채널 선택</span>
-            <span class="share-desktop-hint">PC: 카톡 채널이 열리면, 다운로드된 PDF를 채팅창에 드래그해서 넣어주세요</span>
+          <div class="send-primary-title">📮 사장님께 신청 내역 보내기</div>
+          <div style="font-size:13px;color:#6B4E1E;line-height:1.6;margin-bottom:12px">
+            아래 버튼을 누르면 <strong>신청 내역이 자동 복사되고 카카오톡 채널이 열립니다.</strong><br>
+            채팅창에 <strong>붙여넣기(길게 눌러 붙여넣기 또는 Ctrl+V)</strong> 하고 전송해주세요.
           </div>
+          <button id="send-to-kakao-btn" class="btn btn-share">
+            📋 신청 내역 복사 + 카톡 채널 열기
+          </button>
         </div>
 
         <div class="send-steps">
-          <div class="send-steps-title">📋 전송 방법 안내</div>
+          <div class="send-steps-title">✅ 이후 진행 절차</div>
           <ol class="send-steps-list">
-            <li>위 <strong>"계약서 사장님께 전송하기"</strong> 버튼 클릭</li>
-            <li><strong>카카오톡</strong> 앱 또는 <strong>채널 채팅창</strong>이 열림</li>
-            <li>방금 다운로드된 <strong>PDF 파일</strong>을 채팅창에 첨부해서 전송</li>
+            <li>사장님이 신청 내역 확인 후 <strong>예약 등록</strong></li>
+            <li>고객님이 아래 계좌로 <strong>계약금 100,000원 입금</strong> (1시간 이내)</li>
+            <li>사장님이 <strong>서명된 계약서 PDF를 카톡으로 전달</strong>드립니다</li>
           </ol>
         </div>
 
         <div class="actions" style="flex-direction:column;gap:10px;margin-top:16px">
+          <button class="btn btn-secondary" id="copy-msg-btn">📋 신청 내역만 복사</button>
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
-          <button class="btn btn-secondary" id="copy-msg-btn">📋 채팅 메시지 복사 (${productName})</button>
         </div>
 
         <div class="deposit-box">
@@ -634,65 +633,52 @@ registerRenderer(8, s => {
     render();
   });
 
-  // ========== 계약서 전송 버튼 (Web Share API + 폴백) ==========
-  const shareBtn = document.getElementById('share-pdf-btn');
-  if (shareBtn) {
-    const canShareFile = () => {
-      if (!navigator.share || !submissionState.pdfBlob) return false;
-      const file = new File([submissionState.pdfBlob], submissionState.pdfFilename, { type: 'application/pdf' });
-      return navigator.canShare && navigator.canShare({ files: [file] });
-    };
+  // ========== 신청 내역 복사 + 카톡 채널 열기 (메인 액션) ==========
+  const sendBtn = document.getElementById('send-to-kakao-btn');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', async () => {
+      // 1) 카톡 채널 창을 먼저 오픈 (사용자 클릭 컨텍스트 안에서 → 팝업 차단 회피)
+      const kakaoWin = window.open(OWNER_INFO.kakaoChannelUrl, '_blank', 'noopener,noreferrer');
 
-    // 지원 여부에 따라 힌트 문구 조정
-    const hint = document.getElementById('share-hint');
-    if (hint) {
-      if (canShareFile()) {
-        hint.querySelector('.share-mobile-hint').style.display = 'block';
-        hint.querySelector('.share-desktop-hint').style.display = 'none';
-      } else {
-        hint.querySelector('.share-mobile-hint').style.display = 'none';
-        hint.querySelector('.share-desktop-hint').style.display = 'block';
-      }
-    }
-
-    shareBtn.addEventListener('click', async () => {
+      // 2) 클립보드 복사
       const message = buildKakaoMessage();
-      // 1) Web Share API 사용 가능 시 → 카톡 앱에 파일 첨부 (진짜 자동 첨부!)
-      if (canShareFile()) {
-        try {
-          const file = new File([submissionState.pdfBlob], submissionState.pdfFilename, { type: 'application/pdf' });
-          await navigator.share({
-            title: '큐피돈 스냅 계약서',
-            text: message,
-            files: [file],
-          });
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return; // 사용자가 취소
-          console.warn('Web Share 실패, 폴백:', err);
-        }
-      }
-      // 2) 폴백: 클립보드에 메시지 복사 + 카톡 채널 새 탭 오픈
+      let copied = false;
       try {
         await navigator.clipboard.writeText(message);
-        alert('📋 채팅 메시지가 복사되었습니다.\n\n카카오톡 채팅창이 열리면:\n1) 메시지 붙여넣기(Ctrl+V)\n2) + 버튼 눌러 다운로드된 PDF 파일 첨부\n3) 전송');
+        copied = true;
       } catch (e) {
-        // 클립보드 실패해도 카톡 창은 열어줌
+        // 클립보드 실패 시 폴백: 화면에 텍스트 노출
+        console.warn('clipboard write failed:', e);
       }
-      window.open(OWNER_INFO.kakaoChannelUrl, '_blank', 'noopener');
+
+      // 3) 시각 피드백
+      sendBtn.textContent = copied ? '✓ 복사 완료! 카톡 창에서 붙여넣기' : '⚠ 자동 복사 실패 (수동 복사 필요)';
+      sendBtn.style.background = copied ? '#4CAF50' : '#F5A623';
+      sendBtn.style.color = '#fff';
+      setTimeout(() => {
+        sendBtn.textContent = '📋 신청 내역 복사 + 카톡 채널 열기';
+        sendBtn.style.background = '';
+        sendBtn.style.color = '';
+      }, 3500);
+
+      // 클립보드 실패 시 아래 fallback 영역에 텍스트 표시
+      if (!copied) {
+        showFallbackMessage(message);
+      }
     });
   }
 
-  // 채팅 메시지 복사 버튼
+  // 신청 내역만 복사 버튼
   const copyMsg = document.getElementById('copy-msg-btn');
   if (copyMsg) {
     copyMsg.addEventListener('click', async () => {
+      const message = buildKakaoMessage();
       try {
-        await navigator.clipboard.writeText(buildKakaoMessage());
+        await navigator.clipboard.writeText(message);
         copyMsg.textContent = '✓ 복사되었습니다';
-        setTimeout(() => { copyMsg.textContent = '📋 채팅 메시지 복사'; }, 2000);
+        setTimeout(() => { copyMsg.textContent = '📋 신청 내역만 복사'; }, 2000);
       } catch (e) {
-        alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+        showFallbackMessage(message);
       }
     });
   }
@@ -706,23 +692,113 @@ registerRenderer(8, s => {
         copyAcc.textContent = '✓ 복사됨';
         setTimeout(() => { copyAcc.textContent = '계좌번호 복사'; }, 2000);
       } catch (e) {
-        alert('복사에 실패했습니다.');
+        showFallbackMessage(OWNER_INFO.bankAccount);
       }
     });
   }
 });
 
+function showFallbackMessage(text) {
+  let box = document.getElementById('fallback-copy-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'fallback-copy-box';
+    box.className = 'info-box';
+    box.style.cssText = 'margin-top:12px;background:#FFF4E0;border-left-color:#F5A623';
+    box.innerHTML = `
+      <div style="font-weight:600;margin-bottom:8px">자동 복사 실패 — 아래 텍스트를 직접 복사해주세요</div>
+      <textarea readonly style="width:100%;min-height:160px;padding:10px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:12px"></textarea>
+    `;
+    const card = document.querySelector('.card.success-box') || document.querySelector('.card');
+    if (card) card.appendChild(box);
+  }
+  const ta = box.querySelector('textarea');
+  if (ta) {
+    ta.value = text;
+    ta.select();
+  }
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function buildKakaoMessage() {
   const d = state.data;
-  const productName = PRODUCTS[d.product]?.name || '';
-  return `[큐피돈 아이폰 스냅 계약]
-성함: ${d.customerName}
-연락처: ${d.customerPhone}
-상품: ${productName}
-예식일: ${d.eventDate} ${d.eventTime}
-장소: ${d.venue}
+  const product = PRODUCTS[d.product];
+  const productName = product?.name || '';
+  const optionsTable = product?.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const p = n => n.toLocaleString('ko-KR');
 
-계약서 PDF 첨부드립니다. 확인 부탁드립니다!`;
+  const quote = calculateQuote({
+    product: d.product,
+    region: d.region,
+    options: d.options,
+    immediateDiscounts: d.immediateDiscounts,
+    promiseDiscounts: d.promiseDiscounts,
+    dolHasMainSnap: d.dolHasMainSnap,
+  });
+
+  const regionLabel = TRAVEL_FEE[d.region]?.name || d.region;
+
+  const optionsList = d.options.length
+    ? d.options.map(c => `- ${optionsTable[c].name} (+${p(optionsTable[c].amount)}원)`).join('\n')
+    : '- 없음';
+
+  const immediateList = d.immediateDiscounts.length
+    ? d.immediateDiscounts.map(c => {
+        const dsc = IMMEDIATE_DISCOUNTS[c];
+        const label = c === 'partner' && d.partnerCode ? `${dsc.name} [코드: ${d.partnerCode}]` : dsc.name;
+        return `- ${label} (${p(dsc.amount)}원)`;
+      }).join('\n')
+    : '- 없음';
+
+  const promiseList = d.promiseDiscounts.length
+    ? d.promiseDiscounts.map(c => {
+        const dsc = PROMISE_DISCOUNTS[c];
+        return `- ${dsc.name} (${p(dsc.amount)}원)`;
+      }).join('\n')
+    : '';
+
+  const dolAlone = d.product === 'dol' && d.dolHasMainSnap === false
+    ? '\n- 아이폰 단독 촬영 (+50,000원)'
+    : '';
+
+  const travelLine = quote.travelFee === null
+    ? '- 출장비: 별도 문의 필요'
+    : quote.travelFee > 0
+      ? `- 출장비: +${p(quote.travelFee)}원`
+      : '- 출장비: 없음 (서울)';
+
+  const promiseSection = promiseList
+    ? `\n🎁 후기 약속 (잔금 정산 시 차감)\n${promiseList}\n- 후기 반영 시 최종 잔금: ${p(quote.balanceAfterReviews)}원\n`
+    : '';
+
+  return `✨ [큐피돈 아이폰 스냅 계약 신청]
+
+📌 신청자
+- 성함: ${d.customerName}
+- 연락처: ${d.customerPhone}
+
+📅 예식 정보
+- 일자: ${d.eventDate} ${d.eventTime}
+- 장소: ${d.venue}
+- 출장지역: ${regionLabel}
+${travelLine}
+
+📷 상품
+- ${productName} (${p(product?.basePrice || 0)}원)${dolAlone}
+
+➕ 추가 옵션
+${optionsList}
+
+💰 할인 (즉시 적용)
+${immediateList}
+${promiseSection}
+💵 견적
+- 총액: ${p(quote.total)}원${quote.isQuoteFinal ? '' : ' (출장비 별도)'}
+- 계약금: ${p(quote.deposit)}원
+- 잔금: ${p(quote.balance)}원
+
+✅ 서명 완료 · 계약서 PDF 다운로드 완료
+계약금 입금 후 예약 최종 확정 부탁드립니다!`;
 }
 
 async function submitContract() {
