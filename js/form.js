@@ -429,7 +429,7 @@ registerRenderer(6, s => {
 
   const promiseLines = s.data.promiseDiscounts.map(code => {
     const d = PROMISE_DISCOUNTS[code];
-    return `<div class="quote-line note"><span>${d.name} (약속)</span><span>${p(d.amount)}</span></div>`;
+    return `<div class="quote-line promise-line"><span>${d.name} <span class="badge-warn">약속</span></span><span>${p(d.amount)}</span></div>`;
   }).join('');
 
   const travelLine = quote.travelFee === null
@@ -443,7 +443,7 @@ registerRenderer(6, s => {
     : '';
 
   const promiseNote = s.data.promiseDiscounts.length
-    ? `<div class="quote-line note"><span>후기 반영 시 잔금</span><span>${p(quote.balanceAfterReviews)}</span></div>`
+    ? `<div class="quote-line promise-total"><span>✨ 후기 반영 시 최종 잔금</span><span>${p(quote.balanceAfterReviews)}</span></div>`
     : '';
 
   const confirmChecked = s.data.quoteConfirmed ? 'checked' : '';
@@ -459,7 +459,7 @@ registerRenderer(6, s => {
         ${immediateLines}
         <div class="quote-line total"><span>총액</span><span>${p(quote.total)}</span></div>
         <div class="quote-line"><span>계약금 (고정)</span><span>${p(quote.deposit)}</span></div>
-        <div class="quote-line"><span><strong>잔금</strong></span><span><strong>${p(quote.balance)}</strong></span></div>
+        <div class="quote-line balance"><span>잔금</span><span>${p(quote.balance)}</span></div>
         ${promiseLines}
         ${promiseNote}
       </div>
@@ -584,10 +584,15 @@ registerRenderer(8, s => {
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
         </div>
 
-        <div style="text-align:left;padding:16px;background:#f4efe5;border-radius:8px;margin-top:16px">
-          <div style="font-weight:600;margin-bottom:8px">💰 계약금 입금 안내</div>
-          <div>계약금 <strong>${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을 아래 계좌로 입금해주시면 예약이 최종 확정됩니다.</div>
-          <div style="margin-top:12px;padding:12px;background:#fff;border-radius:6px">
+        <div class="deposit-box">
+          <div class="deposit-title">💰 계약금 입금 안내</div>
+          <div class="deposit-alert">
+            <div class="deposit-alert-title">⏰ 1시간 이내 입금 필수</div>
+            <div class="deposit-alert-body">계약금 <strong>${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을
+            <strong>1시간 이내</strong>로 입금해주셔야 예약이 <strong>최종 확정</strong>됩니다.<br>
+            <span style="font-size:12px;color:#8a6d3b">시간 내 미입금 시 예약이 자동 취소될 수 있습니다.</span></div>
+          </div>
+          <div class="deposit-account">
             <div><strong>은행:</strong> ${OWNER_INFO.bankName}</div>
             <div><strong>계좌:</strong> ${OWNER_INFO.bankAccount}</div>
             <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
