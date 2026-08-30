@@ -129,8 +129,11 @@ export const OWNER_INFO = {
   bankName: '토스뱅크',
   bankAccount: '1002-5123-8652',
   accountHolder: '큐피돈 스냅',
-  // 카카오톡 채널 홈 URL (버튼 클릭 시 이 링크로 이동)
   kakaoChannelUrl: 'http://pf.kakao.com/_jVYdn/chat',
-  // 화면 표시명
   kakaoDisplayName: '큐피돈 스냅 카카오톡 채널',
 };
+
+// Google Sheets 자동 저장 웹훅 URL
+// 세팅 방법은 README의 "Google Sheets 신청 이력 관리" 섹션 참고
+// URL을 비워두면 자동 저장 기능은 비활성화됨 (계약서 흐름은 정상 작동)
+export const SHEETS_WEBHOOK_URL = '';

@@ -26,9 +26,11 @@ export async function generateContractPDF(formData) {
   const target = renderArea.firstElementChild;
 
   const canvas = await html2canvas(target, {
-    scale: 2,
+    scale: 3,
     useCORS: true,
     backgroundColor: '#ffffff',
+    letterRendering: true,
+    logging: false,
   });
 
   const { jsPDF } = window.jspdf;

@@ -84,6 +84,92 @@ export const OWNER_INFO = {
 
 ---
 
+## 📊 Google Sheets 신청 이력 관리 (선택)
+
+고객이 계약 완료 시 신청 내역을 Google Sheets에 자동 기록하려면 아래 세팅.
+
+### 1. Google Sheets 새 시트 만들기
+
+1. https://sheets.google.com 접속 → **빈 스프레드시트** 만들기
+2. 시트 이름을 `큐피돈 신청 이력` 등으로 변경
+3. 1행에 아래 헤더를 붙여넣기 (A1부터):
+   ```
+   접수시각	성함	연락처	예식일자	예식시간	장소	출장지역	상품	옵션	아이폰단독	즉시할인	후기약속	짝꿍코드	총액	계약금	잔금	후기반영잔금	견적확정
+   ```
+
+### 2. Apps Script 코드 붙여넣기
+
+1. 스프레드시트 상단 메뉴 → **확장 프로그램 → Apps Script**
+2. 열린 편집기의 기본 `function myFunction()` 지우고 아래 코드 붙여넣기:
+
+```javascript
+function doPost(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const d = JSON.parse(e.postData.contents);
+    sheet.appendRow([
+      new Date(d.submittedAt),
+      d.customerName,
+      d.customerPhone,
+      d.eventDate,
+      d.eventTime,
+      d.venue,
+      d.region,
+      d.product,
+      d.options,
+      d.dolAloneSurcharge,
+      d.immediateDiscounts,
+      d.promiseDiscounts,
+      d.partnerCode,
+      d.total,
+      d.deposit,
+      d.balance,
+      d.balanceAfterReviews,
+      d.isQuoteFinal ? '확정' : '출장비별도문의'
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({ok:true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ok:false, error: String(err)}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+```
+
+3. 저장 아이콘(💾) 클릭 → 프로젝트 이름 입력 (예: `Cupidon Webhook`)
+
+### 3. 웹 앱 배포
+
+1. 우측 상단 **배포 → 새 배포**
+2. 톱니바퀴(⚙️) → **웹 앱** 선택
+3. 설정:
+   - 설명: `큐피돈 계약 신청 접수`
+   - 실행 계정: **나 (본인 이메일)**
+   - 액세스 권한: **모든 사용자** ⭐ (필수)
+4. **배포** 클릭 → 권한 승인 팝업 → **액세스 허용**
+5. 발급된 **웹 앱 URL 복사** (예: `https://script.google.com/macros/s/AKfycb.../exec`)
+
+### 4. config.js에 URL 붙여넣기
+
+`js/config.js` 파일에서:
+```javascript
+export const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
+```
+
+### 5. 커밋 & 푸시
+
+```bash
+git add js/config.js
+git commit -m "config: enable Google Sheets webhook"
+git push
+```
+
+이제 고객이 계약 완료할 때마다 스프레드시트에 자동으로 한 줄씩 기록됩니다!
+
+**주의:** 웹훅 URL 자체는 config.js에 그대로 노출되지만, 이 URL은 데이터 **추가만** 가능하고 조회는 불가능해서 안전합니다. (구조상 스팸 방지를 원하시면 Apps Script 안에 secret 헤더 체크를 추가할 수 있습니다.)
+
+---
+
 ## 파일 구조
 
 ```

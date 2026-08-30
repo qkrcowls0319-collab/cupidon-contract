@@ -7,33 +7,83 @@ import {
   OPTIONS_STUDIO_DOL,
   OWNER_INFO,
   FIXED_DEPOSIT,
+  SHEETS_WEBHOOK_URL,
 } from './config.js';
 import { validateStep } from './validators.js';
 import { calculateQuote } from './pricing.js';
 import { generateContractPDF, downloadBlob } from './pdf.js';
 
+const STORAGE_KEY = 'cupidon-contract-session-v1';
+
+const DEFAULT_DATA = {
+  customerName: '',
+  customerPhone: '',
+  eventDate: '',
+  eventTime: '',
+  venue: '',
+  region: '',
+  product: '',
+  options: [],
+  dolHasMainSnap: null,
+  immediateDiscounts: [],
+  promiseDiscounts: [],
+  partnerCode: '',
+  quoteConfirmed: false,
+  signature: '',
+  agreed: false,
+};
+
+// localStorage에서 저장된 세션 복원 (있으면)
+function loadSavedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // 저장된 세션이 7일 이상 지났으면 폐기 (오래된 데이터 방지)
+    if (parsed.savedAt && (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch (e) {
+    console.warn('세션 복원 실패:', e);
+    return null;
+  }
+}
+
+const _saved = loadSavedState();
 export const state = {
-  currentStep: 1,
+  currentStep: _saved?.currentStep || 1,
   totalSteps: 8,
   errors: {},
-  data: {
-    customerName: '',
-    customerPhone: '',
-    eventDate: '',
-    eventTime: '',
-    venue: '',
-    region: '',
-    product: '',
-    options: [],
-    dolHasMainSnap: null,
-    immediateDiscounts: [],
-    promiseDiscounts: [],
-    partnerCode: '',
-    quoteConfirmed: false,
-    signature: '', // base64 dataURL
-    agreed: false,
-  },
+  data: { ...DEFAULT_DATA, ...(_saved?.data || {}) },
 };
+
+// 세션 저장 (data 또는 currentStep 변경 시 호출)
+function saveSession() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      currentStep: state.currentStep,
+      data: state.data,
+      savedAt: Date.now(),
+    }));
+  } catch (e) {
+    console.warn('세션 저장 실패:', e);
+  }
+}
+
+// 세션 초기화 (계약 완료 후 "새로 시작" 등에서 사용)
+export function resetSession() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  state.currentStep = 1;
+  state.data = { ...DEFAULT_DATA };
+  state.errors = {};
+  submissionState.status = 'idle';
+  submissionState.error = null;
+  submissionState.pdfBlob = null;
+  submissionState.pdfFilename = null;
+  render();
+}
 
 const renderers = {}; // step번호 → 렌더 함수
 const afterRenderHooks = {}; // step 렌더 후 실행할 훅 (signature_pad 초기화 등)
@@ -43,9 +93,36 @@ export function registerRenderer(step, fn, afterRender = null) {
   if (afterRender) afterRenderHooks[step] = afterRender;
 }
 
+let _resumeBannerShown = false;
 export function render() {
   const app = document.getElementById('app');
   const indicator = document.getElementById('step-indicator');
+  // 재접속 안내 배너 (한 번만)
+  if (_saved && !_resumeBannerShown && state.currentStep > 1) {
+    _resumeBannerShown = true;
+    const banner = document.createElement('div');
+    banner.className = 'info-box';
+    banner.style.cssText = 'background:#EAF4FF;border-left-color:#5B8DEF;margin-bottom:16px';
+    banner.innerHTML = `
+      💡 이전 진행 내역을 불러왔어요 (Step ${state.currentStep}부터 이어서 진행).
+      &nbsp; <a href="#" id="reset-session-link" style="color:#5B8DEF;font-weight:600">처음부터 다시 시작</a>
+    `;
+    const container = document.querySelector('.container');
+    if (container) {
+      const existing = container.querySelector('.info-box[data-resume]');
+      if (existing) existing.remove();
+      banner.setAttribute('data-resume', '1');
+      container.insertBefore(banner, document.getElementById('step-indicator'));
+      const link = banner.querySelector('#reset-session-link');
+      if (link) link.addEventListener('click', e => {
+        e.preventDefault();
+        if (confirm('저장된 진행 내역을 삭제하고 Step 1부터 시작하시겠어요?')) {
+          resetSession();
+          banner.remove();
+        }
+      });
+    }
+  }
 
   // 스텝 인디케이터
   indicator.innerHTML = '';
@@ -83,12 +160,14 @@ function attachCommonHandlers() {
         } else {
           state.data[key] = el.checked;
         }
+        saveSession();
         onDataChange();
       });
     } else if (el.type === 'radio') {
       el.addEventListener('change', () => {
         if (el.checked) {
           state.data[key] = el.value === 'true' ? true : el.value === 'false' ? false : el.value;
+          saveSession();
           onDataChange();
         }
       });
@@ -97,9 +176,10 @@ function attachCommonHandlers() {
       el.addEventListener('input', () => {
         state.data[key] = el.value;
       });
-      // blur 시점에만 재렌더 (에러 표시 등 최신 상태 반영)
+      // blur 시점에 세션 저장
       el.addEventListener('blur', () => {
         state.data[key] = el.value;
+        saveSession();
       });
     }
   });
@@ -136,6 +216,7 @@ function goNext() {
   }
   if (state.currentStep < state.totalSteps) {
     state.currentStep++;
+    saveSession();
     render();
   }
 }
@@ -150,6 +231,7 @@ function goPrev() {
     }
     state.currentStep--;
     state.errors = {};
+    saveSession();
     render();
   }
 }
@@ -592,6 +674,7 @@ registerRenderer(8, s => {
         <div class="actions" style="flex-direction:column;gap:10px;margin-top:16px">
           <button class="btn btn-secondary" id="copy-msg-btn">📋 신청 내역만 복사</button>
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
+          <button class="btn btn-secondary" id="new-contract-btn" style="color:#999">🔄 새 계약 시작 (현재 세션 삭제)</button>
         </div>
 
         <div class="deposit-box">
@@ -679,6 +762,16 @@ registerRenderer(8, s => {
         setTimeout(() => { copyMsg.textContent = '📋 신청 내역만 복사'; }, 2000);
       } catch (e) {
         showFallbackMessage(message);
+      }
+    });
+  }
+
+  // 새 계약 시작 버튼
+  const newBtn = document.getElementById('new-contract-btn');
+  if (newBtn) {
+    newBtn.addEventListener('click', () => {
+      if (confirm('현재 진행 중인 계약 세션을 삭제하고 처음부터 다시 시작하시겠어요?\n(이미 완료된 계약서와 카톡 전송에는 영향 없음)')) {
+        resetSession();
       }
     });
   }
@@ -793,10 +886,56 @@ async function submitContract() {
     submissionState.pdfFilename = result.filename;
     downloadBlob(result.blob, result.filename);
     submissionState.status = 'success';
+
+    // Google Sheets 자동 저장 (fire-and-forget, 실패해도 흐름 유지)
+    sendToGoogleSheets(state.data, result.quote).catch(err =>
+      console.warn('Sheets 저장 실패:', err)
+    );
   } catch (err) {
     console.error('PDF 생성 실패:', err);
     submissionState.error = err.message;
     submissionState.status = 'error';
   }
   render();
+}
+
+async function sendToGoogleSheets(data, quote) {
+  if (!SHEETS_WEBHOOK_URL) return; // 세팅 안 됐으면 스킵
+  const product = PRODUCTS[data.product];
+  const optionsTable = product?.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const optionNames = data.options.map(c => optionsTable[c]?.name).filter(Boolean).join(', ');
+  const immediateNames = data.immediateDiscounts.map(c => {
+    if (c === 'partner' && data.partnerCode) return `짝꿍[${data.partnerCode}]`;
+    return IMMEDIATE_DISCOUNTS[c]?.name;
+  }).filter(Boolean).join(', ');
+  const promiseNames = data.promiseDiscounts.map(c => PROMISE_DISCOUNTS[c]?.name).filter(Boolean).join(', ');
+
+  const payload = {
+    submittedAt: new Date().toISOString(),
+    customerName: data.customerName,
+    customerPhone: data.customerPhone,
+    eventDate: data.eventDate,
+    eventTime: data.eventTime,
+    venue: data.venue,
+    region: TRAVEL_FEE[data.region]?.name || data.region,
+    product: product?.name || data.product,
+    options: optionNames,
+    dolAloneSurcharge: data.product === 'dol' && data.dolHasMainSnap === false ? '적용(+50,000)' : '',
+    immediateDiscounts: immediateNames,
+    promiseDiscounts: promiseNames,
+    partnerCode: data.partnerCode || '',
+    total: quote.total,
+    deposit: quote.deposit,
+    balance: quote.balance,
+    balanceAfterReviews: quote.balanceAfterReviews,
+    isQuoteFinal: quote.isQuoteFinal,
+  };
+
+  // no-cors 모드로 전송 (Apps Script는 CORS 응답 헤더가 없어 반응 확인 불가하지만 데이터는 전달됨)
+  await fetch(SHEETS_WEBHOOK_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
 }
