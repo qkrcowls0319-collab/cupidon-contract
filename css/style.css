@@ -420,6 +420,91 @@ canvas.signature-pad {
   color: var(--accent-dark);
 }
 
+/* ========== Send Primary Box (Step 8) ========== */
+.send-primary-box {
+  background: linear-gradient(135deg, #FFF8DC 0%, #FFE082 100%);
+  border: 2px solid #F5C56A;
+  border-radius: 14px;
+  padding: 20px 18px;
+  margin: 20px 0 14px;
+  text-align: center;
+  animation: fadeIn 0.4s ease;
+}
+.send-primary-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #6B4E1E;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+.btn-share {
+  width: 100%;
+  background: #FEE500;
+  color: #3C1E1E;
+  border: none;
+  padding: 16px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 3px 12px rgba(254, 229, 0, 0.4);
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+.btn-share:hover {
+  background: #F5D800;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(254, 229, 0, 0.5);
+}
+.send-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6B4E1E;
+  line-height: 1.5;
+}
+.share-mobile-hint, .share-desktop-hint { display: none; }
+
+.send-steps {
+  background: var(--beige-light);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-top: 8px;
+  border: 1px solid var(--line-soft);
+}
+.send-steps-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}
+.send-steps-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.9;
+}
+.send-steps-list li strong { color: var(--text); }
+
+.btn-copy-account {
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.2s;
+  width: 100%;
+}
+.btn-copy-account:hover {
+  background: var(--accent-dark);
+}
+
 /* ========== Success / Info Boxes ========== */
 .success-box {
   text-align: center;
