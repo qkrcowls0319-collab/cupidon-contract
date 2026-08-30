@@ -124,18 +124,15 @@ export const DOL_ALONE_SURCHARGE = 50000;
 // 계약금 (고정)
 export const FIXED_DEPOSIT = 100000;
 
-// 사장님 정보 (계약서 하단에 표시될 계좌·연락처)
+// 사장님 정보 (계약서 하단·완료화면에 표시)
+// 아래 4개 값만 실제 정보로 교체하시면 됩니다.
 export const OWNER_INFO = {
-  bankAccount: '(계좌번호는 README 세팅 후 입력)',
-  bankName: '은행명',
+  bankName: '은행명 (예: 카카오뱅크)',
+  bankAccount: '계좌번호 (예: 3333-01-1234567)',
   accountHolder: '큐피돈 스냅',
-  kakaoContact: '(카카오톡 채널 링크 또는 ID)',
-};
-
-// EmailJS 설정 (README 참고, 실제 배포 전 실제 값으로 교체)
-export const EMAILJS_CONFIG = {
-  publicKey: 'YOUR_PUBLIC_KEY',
-  serviceId: 'YOUR_SERVICE_ID',
-  templateId: 'YOUR_TEMPLATE_ID',
-  toEmail: 'chaejin.park@myrealtrip.com',
+  // 카카오톡 채널 홈 URL (예: 'https://pf.kakao.com/_abcdef')
+  // 오픈채팅 URL이나 카카오톡 오픈프로필 URL도 가능합니다.
+  kakaoChannelUrl: 'https://pf.kakao.com/_YOUR_CHANNEL',
+  // 화면에 표시될 카카오톡 안내명 (예: '큐피돈 스냅 카카오톡 채널')
+  kakaoDisplayName: '큐피돈 스냅 카카오톡',
 };

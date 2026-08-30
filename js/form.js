@@ -11,7 +11,6 @@ import {
 import { validateStep } from './validators.js';
 import { calculateQuote } from './pricing.js';
 import { generateContractPDF, downloadBlob } from './pdf.js';
-import { sendContractEmail } from './email.js';
 
 export const state = {
   currentStep: 1,
@@ -521,47 +520,42 @@ const submissionState = { status: 'idle', error: null, pdfBlob: null, pdfFilenam
 
 registerRenderer(8, s => {
   if (submissionState.status === 'idle') {
-    // 첫 진입 시 자동 제출
     setTimeout(() => submitContract(), 100);
     return `<div class="card"><h2>계약서 생성 중...</h2><p>잠시만 기다려주세요.</p></div>`;
   }
   if (submissionState.status === 'submitting') {
-    return `<div class="card"><h2>이메일 전송 중...</h2><p>PDF 생성 및 사장님께 발송하고 있습니다.</p></div>`;
+    return `<div class="card"><h2>PDF 생성 중...</h2><p>계약서를 만들고 있습니다.</p></div>`;
   }
   if (submissionState.status === 'success') {
     return `
       <div class="card success-box">
         <div class="check">✓</div>
-        <h2>계약이 완료되었습니다!</h2>
-        <p>계약서 PDF가 자동으로 다운로드되었으며, 사장님께도 전달되었습니다.</p>
-        <div class="info-box" style="text-align:left">
-          <strong>다음 단계:</strong><br>
-          아래 계좌로 <strong>계약금 ${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을 입금해주시면 예약이 최종 확정됩니다.
+        <h2>계약서가 준비되었습니다!</h2>
+        <p style="color:#666">계약서 PDF가 방금 자동으로 다운로드되었습니다.</p>
+
+        <div class="info-box" style="text-align:left;background:#fff3cd;border-left-color:#f5a623">
+          <strong>⭐ 마지막 단계 (필수):</strong><br>
+          아래 <strong>"카카오톡으로 계약서 보내기"</strong> 버튼을 눌러 사장님께 계약서 PDF를 전송해주세요.<br>
+          <span style="font-size:12px;color:#888">(카톡 채널이 열리면, 방금 다운로드된 PDF 파일을 채팅창에 첨부해서 보내주세요.)</span>
         </div>
-        <div style="text-align:left;padding:16px;background:#f4efe5;border-radius:8px;margin-top:12px">
-          <div><strong>계좌:</strong> ${OWNER_INFO.bankName} ${OWNER_INFO.bankAccount}</div>
-          <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
-          <div style="margin-top:8px"><strong>카카오톡:</strong> ${OWNER_INFO.kakaoContact}</div>
-        </div>
-        <div class="actions">
+
+        <div class="actions" style="flex-direction:column;gap:10px">
+          <a href="${OWNER_INFO.kakaoChannelUrl}" target="_blank" rel="noopener"
+             class="btn btn-primary"
+             style="background:#FEE500;color:#3C1E1E;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px">
+            💬 카카오톡으로 계약서 보내기
+          </a>
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
         </div>
-      </div>
-    `;
-  }
-  if (submissionState.status === 'partial') {
-    // 이메일 실패, PDF는 다운로드됨
-    return `
-      <div class="card success-box">
-        <div class="check" style="color:#f5a623">⚠</div>
-        <h2>계약서는 생성되었습니다</h2>
-        <p>PDF는 다운로드 완료되었으나, 이메일 자동 발송에 실패했습니다.</p>
-        <div class="info-box">
-          다운로드된 PDF 파일을 카카오톡으로 사장님(<strong>${OWNER_INFO.kakaoContact}</strong>)께 직접 전달해주세요.
-        </div>
-        <p style="color:#999;font-size:12px">에러: ${submissionState.error || ''}</p>
-        <div class="actions">
-          <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
+
+        <div style="text-align:left;padding:16px;background:#f4efe5;border-radius:8px;margin-top:16px">
+          <div style="font-weight:600;margin-bottom:8px">💰 계약금 입금 안내</div>
+          <div>계약금 <strong>${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을 아래 계좌로 입금해주시면 예약이 최종 확정됩니다.</div>
+          <div style="margin-top:12px;padding:12px;background:#fff;border-radius:6px">
+            <div><strong>은행:</strong> ${OWNER_INFO.bankName}</div>
+            <div><strong>계좌:</strong> ${OWNER_INFO.bankAccount}</div>
+            <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
+          </div>
         </div>
       </div>
     `;
@@ -596,20 +590,7 @@ async function submitContract() {
     submissionState.pdfBlob = result.blob;
     submissionState.pdfFilename = result.filename;
     downloadBlob(result.blob, result.filename);
-
-    try {
-      await sendContractEmail({
-        formData: state.data,
-        quote: result.quote,
-        pdfBase64: result.base64,
-        pdfFilename: result.filename,
-      });
-      submissionState.status = 'success';
-    } catch (emailErr) {
-      console.error('EmailJS 실패:', emailErr);
-      submissionState.error = emailErr.message;
-      submissionState.status = 'partial';
-    }
+    submissionState.status = 'success';
   } catch (err) {
     console.error('PDF 생성 실패:', err);
     submissionState.error = err.message;
