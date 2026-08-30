@@ -2,10 +2,9 @@ import { renderContractHTML } from './templates.js';
 import { calculateQuote } from './pricing.js';
 
 /**
- * 계약서 PDF를 생성하고 Blob(및 다운로드용 dataURL, base64)를 반환.
- * html2canvas로 hidden div를 캡처 → 페이지별로 슬라이스해서 jsPDF에 삽입.
- * 페이지 경계에서 텍스트가 잘려 깨지지 않도록 각 페이지마다 원본 캔버스에서
- * 해당 세로 구간을 크롭한 새 캔버스를 만들어 이미지로 삽입.
+ * 계약서 PDF를 생성.
+ * 전략: 계약서 HTML을 캡처한 뒤, 그 이미지를 A4 한 페이지에 무조건 들어가도록
+ * 종횡비 유지하며 축소. 페이지 분할 로직 자체를 없애 잘림/깨짐 원천 방지.
  */
 export async function generateContractPDF(formData) {
   const quote = calculateQuote({
@@ -25,56 +24,50 @@ export async function generateContractPDF(formData) {
   renderArea.innerHTML = html;
   const target = renderArea.firstElementChild;
 
+  // 폰트 로드 대기 (한글 폰트 렌더링 안정성)
+  if (document.fonts && document.fonts.ready) {
+    try { await document.fonts.ready; } catch (e) {}
+  }
+
+  // 고해상도 캡처
   const canvas = await html2canvas(target, {
     scale: 3,
     useCORS: true,
     backgroundColor: '#ffffff',
     letterRendering: true,
     logging: false,
+    imageTimeout: 15000,
   });
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = pdf.internal.pageSize.getWidth();   // 210 mm
   const pageHeight = pdf.internal.pageSize.getHeight(); // 297 mm
+  const margin = 8;
+  const availWidth = pageWidth - margin * 2;
+  const availHeight = pageHeight - margin * 2;
 
-  const margin = 10; // mm
-  const contentWidthMm = pageWidth - margin * 2;
-  const contentHeightMm = pageHeight - margin * 2;
+  // 캔버스 종횡비 유지하며 A4 안에 딱 맞게 축소
+  const canvasAspect = canvas.width / canvas.height;
+  const pageAspect = availWidth / availHeight;
 
-  // canvas 픽셀 → mm 환산
-  const pxPerMm = canvas.width / contentWidthMm;
-  const pageContentHeightPx = Math.floor(contentHeightMm * pxPerMm);
-
-  // 세로로 페이지 단위 크롭
-  let sourceY = 0;
-  let pageIndex = 0;
-  while (sourceY < canvas.height) {
-    const remaining = canvas.height - sourceY;
-    const sliceHeightPx = Math.min(pageContentHeightPx, remaining);
-
-    // 페이지별 임시 캔버스에 원본 캔버스의 해당 세로 구간만 그림
-    const pageCanvas = document.createElement('canvas');
-    pageCanvas.width = canvas.width;
-    pageCanvas.height = sliceHeightPx;
-    const ctx = pageCanvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-    ctx.drawImage(
-      canvas,
-      0, sourceY, canvas.width, sliceHeightPx,
-      0, 0, canvas.width, sliceHeightPx
-    );
-
-    const sliceHeightMm = sliceHeightPx / pxPerMm;
-    const pageImgData = pageCanvas.toDataURL('image/png');
-
-    if (pageIndex > 0) pdf.addPage();
-    pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidthMm, sliceHeightMm, undefined, 'FAST');
-
-    sourceY += sliceHeightPx;
-    pageIndex += 1;
+  let imgWidth, imgHeight;
+  if (canvasAspect > pageAspect) {
+    // 가로가 상대적으로 더 넓음 → 가로 기준 맞춤
+    imgWidth = availWidth;
+    imgHeight = availWidth / canvasAspect;
+  } else {
+    // 세로가 상대적으로 더 김 → 세로 기준 맞춤
+    imgHeight = availHeight;
+    imgWidth = availHeight * canvasAspect;
   }
+
+  // 페이지 중앙 정렬
+  const x = margin + (availWidth - imgWidth) / 2;
+  const y = margin + (availHeight - imgHeight) / 2;
+
+  const imgData = canvas.toDataURL('image/png');
+  pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight, undefined, 'SLOW'); // 고품질 압축
 
   const blob = pdf.output('blob');
   const base64 = pdf.output('datauristring').split(',')[1];

@@ -887,8 +887,8 @@ async function submitContract() {
     downloadBlob(result.blob, result.filename);
     submissionState.status = 'success';
 
-    // Google Sheets 자동 저장 (fire-and-forget, 실패해도 흐름 유지)
-    sendToGoogleSheets(state.data, result.quote).catch(err =>
+    // Google Sheets 자동 저장 (PDF 링크 포함, fire-and-forget)
+    sendToGoogleSheets(state.data, result.quote, result.base64, result.filename).catch(err =>
       console.warn('Sheets 저장 실패:', err)
     );
   } catch (err) {
@@ -899,7 +899,7 @@ async function submitContract() {
   render();
 }
 
-async function sendToGoogleSheets(data, quote) {
+async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
   if (!SHEETS_WEBHOOK_URL) return; // 세팅 안 됐으면 스킵
   const product = PRODUCTS[data.product];
   const optionsTable = product?.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
@@ -929,6 +929,8 @@ async function sendToGoogleSheets(data, quote) {
     balance: quote.balance,
     balanceAfterReviews: quote.balanceAfterReviews,
     isQuoteFinal: quote.isQuoteFinal,
+    pdfBase64: pdfBase64 || '',
+    pdfFilename: pdfFilename || '',
   };
 
   // no-cors 모드로 전송 (Apps Script는 CORS 응답 헤더가 없어 반응 확인 불가하지만 데이터는 전달됨)
