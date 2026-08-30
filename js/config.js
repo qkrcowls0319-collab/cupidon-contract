@@ -125,14 +125,12 @@ export const DOL_ALONE_SURCHARGE = 50000;
 export const FIXED_DEPOSIT = 100000;
 
 // 사장님 정보 (계약서 하단·완료화면에 표시)
-// 아래 4개 값만 실제 정보로 교체하시면 됩니다.
 export const OWNER_INFO = {
-  bankName: '은행명 (예: 카카오뱅크)',
-  bankAccount: '계좌번호 (예: 3333-01-1234567)',
+  bankName: '토스뱅크',
+  bankAccount: '1002-5123-8652',
   accountHolder: '큐피돈 스냅',
-  // 카카오톡 채널 홈 URL (예: 'https://pf.kakao.com/_abcdef')
-  // 오픈채팅 URL이나 카카오톡 오픈프로필 URL도 가능합니다.
-  kakaoChannelUrl: 'https://pf.kakao.com/_YOUR_CHANNEL',
-  // 화면에 표시될 카카오톡 안내명 (예: '큐피돈 스냅 카카오톡 채널')
-  kakaoDisplayName: '큐피돈 스냅 카카오톡',
+  // 카카오톡 채널 홈 URL (버튼 클릭 시 이 링크로 이동)
+  kakaoChannelUrl: 'http://pf.kakao.com/_decupidon',
+  // 화면 표시명
+  kakaoDisplayName: '큐피돈 스냅 카카오톡 채널',
 };
