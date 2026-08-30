@@ -738,67 +738,50 @@ function buildKakaoMessage() {
 
   const regionLabel = TRAVEL_FEE[d.region]?.name || d.region;
 
-  const optionsList = d.options.length
-    ? d.options.map(c => `- ${optionsTable[c].name} (+${p(optionsTable[c].amount)}원)`).join('\n')
-    : '- 없음';
+  // 상품 + 옵션 (인라인)
+  const optionText = d.options.length
+    ? d.options.map(c => optionsTable[c].name).join(', ')
+    : '';
+  const dolAlone = d.product === 'dol' && d.dolHasMainSnap === false ? ' + 아이폰 단독(+50,000)' : '';
+  const productLine = optionText
+    ? `📷 상품: ${productName} + ${optionText}${dolAlone}`
+    : `📷 상품: ${productName}${dolAlone}`;
 
-  const immediateList = d.immediateDiscounts.length
+  // 할인 요약
+  const immediateText = d.immediateDiscounts.length
     ? d.immediateDiscounts.map(c => {
-        const dsc = IMMEDIATE_DISCOUNTS[c];
-        const label = c === 'partner' && d.partnerCode ? `${dsc.name} [코드: ${d.partnerCode}]` : dsc.name;
-        return `- ${label} (${p(dsc.amount)}원)`;
-      }).join('\n')
-    : '- 없음';
+        if (c === 'partner' && d.partnerCode) return `짝꿍[${d.partnerCode}]`;
+        return { sameDay: '당일계약', portrait: '초상권', partner: '짝꿍' }[c] || IMMEDIATE_DISCOUNTS[c].name;
+      }).join(', ')
+    : '없음';
 
-  const promiseList = d.promiseDiscounts.length
-    ? d.promiseDiscounts.map(c => {
-        const dsc = PROMISE_DISCOUNTS[c];
-        return `- ${dsc.name} (${p(dsc.amount)}원)`;
-      }).join('\n')
+  const promiseText = d.promiseDiscounts.length
+    ? d.promiseDiscounts.map(c => ({ blogPromise: '블로그', cupidonPromise: '큐피돈' }[c] || PROMISE_DISCOUNTS[c].name)).join(', ')
     : '';
 
-  const dolAlone = d.product === 'dol' && d.dolHasMainSnap === false
-    ? '\n- 아이폰 단독 촬영 (+50,000원)'
+  const promiseLine = promiseText
+    ? `\n🎁 후기 약속: ${promiseText} → 최종 잔금 ${p(quote.balanceAfterReviews)}원`
     : '';
 
-  const travelLine = quote.travelFee === null
-    ? '- 출장비: 별도 문의 필요'
-    : quote.travelFee > 0
-      ? `- 출장비: +${p(quote.travelFee)}원`
-      : '- 출장비: 없음 (서울)';
+  const travelHint = quote.travelFee === null
+    ? ' (출장비 별도)'
+    : quote.travelFee > 0 ? ` (출장비 +${p(quote.travelFee)})` : '';
 
-  const promiseSection = promiseList
-    ? `\n🎁 후기 약속 (잔금 정산 시 차감)\n${promiseList}\n- 후기 반영 시 최종 잔금: ${p(quote.balanceAfterReviews)}원\n`
-    : '';
+  return `[큐피돈 계약 신청]
 
-  return `✨ [큐피돈 아이폰 스냅 계약 신청]
+${d.customerName} / ${d.customerPhone}
+📅 ${d.eventDate} ${d.eventTime} · ${d.venue} · ${regionLabel}
 
-📌 신청자
-- 성함: ${d.customerName}
-- 연락처: ${d.customerPhone}
+${productLine}
+💰 할인: ${immediateText}${promiseLine}
 
-📅 예식 정보
-- 일자: ${d.eventDate} ${d.eventTime}
-- 장소: ${d.venue}
-- 출장지역: ${regionLabel}
-${travelLine}
+━━━━━━━━━━━━━━
+총액: ${p(quote.total)}원${travelHint}
+계약금: ${p(quote.deposit)}원 ⭐
+잔금: ${p(quote.balance)}원
+━━━━━━━━━━━━━━
 
-📷 상품
-- ${productName} (${p(product?.basePrice || 0)}원)${dolAlone}
-
-➕ 추가 옵션
-${optionsList}
-
-💰 할인 (즉시 적용)
-${immediateList}
-${promiseSection}
-💵 견적
-- 총액: ${p(quote.total)}원${quote.isQuoteFinal ? '' : ' (출장비 별도)'}
-- 계약금: ${p(quote.deposit)}원
-- 잔금: ${p(quote.balance)}원
-
-✅ 서명 완료 · 계약서 PDF 다운로드 완료
-계약금 입금 후 예약 최종 확정 부탁드립니다!`;
+✅ 서명 완료`;
 }
 
 async function submitContract() {
