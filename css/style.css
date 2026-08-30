@@ -1,0 +1,129 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: 'Malgun Gothic', '맑은 고딕', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #faf7f2;
+  color: #333;
+  line-height: 1.6;
+}
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+.header {
+  text-align: center;
+  padding: 24px 0;
+}
+.header h1 {
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin: 0;
+  font-weight: 300;
+}
+.header p { color: #999; margin: 4px 0 0; font-size: 13px; }
+
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0 20px;
+}
+.step-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #e0d9cc; color: #999;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+}
+.step-dot.active { background: #333; color: #fff; }
+.step-dot.done { background: #999; color: #fff; }
+
+.card {
+  background: #fff; border-radius: 12px; padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 16px;
+}
+.card h2 { margin: 0 0 20px; font-size: 20px; font-weight: 500; }
+.card h3 { margin: 20px 0 12px; font-size: 15px; color: #555; font-weight: 500; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; margin-bottom: 6px; color: #666; }
+.field input[type="text"],
+.field input[type="tel"],
+.field input[type="date"],
+.field input[type="time"],
+.field textarea {
+  width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 15px; font-family: inherit; background: #fff;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: #333; }
+.field .error { color: #c00; font-size: 12px; margin-top: 4px; }
+.field.has-error input { border-color: #c00; }
+
+.radio-group, .checkbox-group { display: grid; gap: 8px; }
+.radio-option, .checkbox-option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px; border: 1px solid #e0d9cc; border-radius: 8px; cursor: pointer;
+  transition: all 0.15s;
+}
+.radio-option:hover, .checkbox-option:hover { background: #f8f4ee; }
+.radio-option input, .checkbox-option input { margin-top: 3px; }
+.radio-option.selected, .checkbox-option.selected { border-color: #333; background: #f4efe5; }
+.radio-option .price, .checkbox-option .price {
+  margin-left: auto; font-weight: 600; color: #333; white-space: nowrap;
+}
+.radio-option .desc, .checkbox-option .desc {
+  display: block; font-size: 12px; color: #888; margin-top: 4px;
+}
+
+.quote-summary {
+  background: #f4efe5; padding: 16px; border-radius: 8px; margin: 20px 0;
+}
+.quote-line {
+  display: flex; justify-content: space-between; padding: 6px 0;
+  border-bottom: 1px dashed #ddd;
+}
+.quote-line:last-child { border: none; }
+.quote-line.total { border-top: 2px solid #333; padding-top: 12px; margin-top: 8px; font-weight: 700; font-size: 18px; }
+.quote-line.note { color: #888; font-size: 12px; }
+
+.signature-wrap {
+  border: 2px dashed #ccc; border-radius: 8px; background: #fff; padding: 4px;
+}
+canvas.signature-pad { width: 100%; height: 200px; touch-action: none; }
+.signature-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn-clear { padding: 6px 14px; background: #eee; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+.actions { display: flex; gap: 8px; margin-top: 24px; }
+.btn {
+  flex: 1; padding: 14px; border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.btn-primary { background: #333; color: #fff; }
+.btn-primary:disabled { background: #999; cursor: not-allowed; }
+.btn-secondary { background: #eee; color: #333; }
+
+.success-box {
+  text-align: center; padding: 40px 20px;
+}
+.success-box .check {
+  font-size: 60px; color: #4caf50; margin-bottom: 16px;
+}
+.info-box {
+  background: #fff9e6; border-left: 4px solid #f5a623;
+  padding: 12px 14px; border-radius: 4px; font-size: 13px; margin: 12px 0;
+}
+.badge-warn {
+  display: inline-block; padding: 2px 8px; background: #fff3cd; color: #856404;
+  border-radius: 4px; font-size: 11px; margin-left: 4px;
+}
+
+#pdf-render-area {
+  position: fixed; left: -9999px; top: 0;
+  background: #fff;
+}
+
+@media (max-width: 480px) {
+  .container { padding: 12px 12px 40px; }
+  .card { padding: 16px; }
+  .header h1 { font-size: 22px; }
+}

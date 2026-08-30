@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>큐피돈 아이폰 스냅 - 계약 신청</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CUPIDON SNAP</h1>
+      <p>아이폰 스냅 계약 신청</p>
+    </div>
+
+    <div class="step-indicator" id="step-indicator"></div>
+
+    <main id="app"></main>
+  </div>
+
+  <!-- PDF 생성용 hidden render area -->
+  <div id="pdf-render-area"></div>
+
+  <!-- 외부 라이브러리 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
