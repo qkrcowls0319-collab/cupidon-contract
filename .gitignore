@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local secrets (EmailJS keys will be baked in — this is intentional for a static site)
+
+# Node (not used, but future-proof)
+node_modules/
