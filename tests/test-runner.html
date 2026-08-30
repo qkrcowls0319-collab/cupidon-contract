@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>큐피돈 테스트 러너</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .pass { color: green; }
+    .fail { color: red; font-weight: bold; }
+    .summary { margin-top: 20px; padding: 10px; border-top: 2px solid #333; }
+    pre { background: #f4f4f4; padding: 5px; }
+  </style>
+</head>
+<body>
+  <h1>큐피돈 테스트 결과</h1>
+  <div id="results"></div>
+  <div class="summary" id="summary"></div>
+
+  <script type="module">
+    // 미니 테스트 프레임워크
+    window.__tests = [];
+    window.test = (name, fn) => window.__tests.push({ name, fn });
+    window.assertEqual = (actual, expected, msg = '') => {
+      if (actual !== expected) {
+        throw new Error(`${msg} — Expected: ${JSON.stringify(expected)}, Actual: ${JSON.stringify(actual)}`);
+      }
+    };
+    window.assertDeepEqual = (actual, expected, msg = '') => {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        throw new Error(`${msg} — Expected: ${JSON.stringify(expected)}, Actual: ${JSON.stringify(actual)}`);
+      }
+    };
+  </script>
+  <script type="module" src="./test-pricing.js"></script>
+  <script type="module" src="./test-validators.js"></script>
+  <script type="module">
+    // Wait a tick so imports resolve
+    await new Promise(r => setTimeout(r, 100));
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    let pass = 0, fail = 0;
+    for (const { name, fn } of window.__tests) {
+      const div = document.createElement('div');
+      try {
+        fn();
+        div.className = 'pass';
+        div.textContent = `✅ PASS: ${name}`;
+        pass++;
+      } catch (e) {
+        div.className = 'fail';
+        div.innerHTML = `❌ FAIL: ${name}<pre>${e.message}</pre>`;
+        fail++;
+      }
+      resultsEl.appendChild(div);
+    }
+    summaryEl.textContent = `총 ${pass + fail}개 중 ${pass}개 통과, ${fail}개 실패`;
+    summaryEl.className = fail === 0 ? 'summary pass' : 'summary fail';
+  </script>
+</body>
+</html>
