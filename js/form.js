@@ -6,6 +6,7 @@ import {
   OPTIONS_WEDDING,
   OPTIONS_STUDIO_DOL,
   OWNER_INFO,
+  FIXED_DEPOSIT,
 } from './config.js';
 import { validateStep } from './validators.js';
 import { calculateQuote } from './pricing.js';
@@ -453,7 +454,7 @@ registerRenderer(7, s => {
       <h2>7. 계약 동의 및 서명</h2>
       <div class="info-box">
         <strong>${PRODUCTS[s.data.product].name}</strong> 상품을 선택하셨습니다.<br>
-        계약금 100,000원, 잔금 ${(_lastQuoteTotalMinusDeposit(s)).toLocaleString('ko-KR')}원.<br>
+        계약금 ${FIXED_DEPOSIT.toLocaleString('ko-KR')}원, 잔금 ${(_lastQuoteTotalMinusDeposit(s)).toLocaleString('ko-KR')}원.<br>
         예식일: ${s.data.eventDate} ${s.data.eventTime} / 장소: ${escapeAttr(s.data.venue)}
       </div>
       <div class="field ${s.errors.agreed ? 'has-error' : ''}">
@@ -535,7 +536,7 @@ registerRenderer(8, s => {
         <p>계약서 PDF가 자동으로 다운로드되었으며, 사장님께도 전달되었습니다.</p>
         <div class="info-box" style="text-align:left">
           <strong>다음 단계:</strong><br>
-          아래 계좌로 <strong>계약금 100,000원</strong>을 입금해주시면 예약이 최종 확정됩니다.
+          아래 계좌로 <strong>계약금 ${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을 입금해주시면 예약이 최종 확정됩니다.
         </div>
         <div style="text-align:left;padding:16px;background:#f4efe5;border-radius:8px;margin-top:12px">
           <div><strong>계좌:</strong> ${OWNER_INFO.bankName} ${OWNER_INFO.bankAccount}</div>
