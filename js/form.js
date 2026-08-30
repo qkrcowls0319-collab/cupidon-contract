@@ -1,4 +1,11 @@
-import { TRAVEL_FEE } from './config.js';
+import {
+  PRODUCTS,
+  TRAVEL_FEE,
+  IMMEDIATE_DISCOUNTS,
+  PROMISE_DISCOUNTS,
+  OPTIONS_WEDDING,
+  OPTIONS_STUDIO_DOL,
+} from './config.js';
 import { validateStep } from './validators.js';
 
 export const state = {
@@ -179,6 +186,150 @@ registerRenderer(2, s => {
         ${s.errors.region ? `<div class="error">${s.errors.region}</div>` : ''}
         ${s.data.region === 'other' ? '<div class="info-box">출장비는 별도 문의 후 안내됩니다. 계약서 총액에는 포함되지 않습니다.</div>' : ''}
       </div>
+      <div class="actions">
+        <button class="btn btn-secondary" data-action="prev">이전</button>
+        <button class="btn btn-primary" data-action="next">다음</button>
+      </div>
+    </div>
+  `;
+});
+
+// ============================
+// Step 3: 상품 선택
+// ============================
+registerRenderer(3, s => {
+  const cards = Object.values(PRODUCTS).map(p => {
+    const checked = s.data.product === p.code ? 'checked' : '';
+    const cls = s.data.product === p.code ? 'selected' : '';
+    const specs = Object.entries(p.spec).slice(0, 4).map(([k, v]) => `${k} ${v}`).join(' / ');
+    return `
+      <label class="radio-option ${cls}">
+        <input type="radio" name="product" data-bind="product" value="${p.code}" ${checked}>
+        <div style="flex:1">
+          <div><strong>${p.name}</strong></div>
+          <span class="desc">${specs}</span>
+        </div>
+        <span class="price">${p.basePrice.toLocaleString('ko-KR')}원</span>
+      </label>`;
+  }).join('');
+  return `
+    <div class="card">
+      <h2>3. 상품 선택</h2>
+      <div class="field ${s.errors.product ? 'has-error' : ''}">
+        <div class="radio-group">${cards}</div>
+        ${s.errors.product ? `<div class="error">${s.errors.product}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" data-action="prev">이전</button>
+        <button class="btn btn-primary" data-action="next">다음</button>
+      </div>
+    </div>
+  `;
+});
+
+// ============================
+// Step 4: 추가 옵션
+// ============================
+registerRenderer(4, s => {
+  if (!s.data.product) {
+    return `<div class="card"><p>상품을 먼저 선택해주세요.</p><div class="actions"><button class="btn btn-secondary" data-action="prev">이전</button></div></div>`;
+  }
+  const product = PRODUCTS[s.data.product];
+  const optionsTable = product.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const options = Object.entries(optionsTable).map(([code, o]) => {
+    const checked = s.data.options.includes(code) ? 'checked' : '';
+    const cls = s.data.options.includes(code) ? 'selected' : '';
+    return `
+      <label class="checkbox-option ${cls}">
+        <input type="checkbox" data-bind="options" value="${code}" ${checked}>
+        <span>${o.name}</span>
+        <span class="price">+${o.amount.toLocaleString('ko-KR')}원</span>
+      </label>`;
+  }).join('');
+
+  // 돌스냅 아이폰 단독 여부
+  let dolQuestion = '';
+  if (s.data.product === 'dol') {
+    const hasMainYes = s.data.dolHasMainSnap === true ? 'checked' : '';
+    const hasMainNo = s.data.dolHasMainSnap === false ? 'checked' : '';
+    const yesCls = s.data.dolHasMainSnap === true ? 'selected' : '';
+    const noCls = s.data.dolHasMainSnap === false ? 'selected' : '';
+    dolQuestion = `
+      <h3>메인스냅(사진사)이 함께 촬영하나요? *</h3>
+      <div class="radio-group">
+        <label class="radio-option ${yesCls}">
+          <input type="radio" name="dolHasMainSnap" data-bind="dolHasMainSnap" value="true" ${hasMainYes}>
+          <span>예, 함께 있습니다</span>
+        </label>
+        <label class="radio-option ${noCls}">
+          <input type="radio" name="dolHasMainSnap" data-bind="dolHasMainSnap" value="false" ${hasMainNo}>
+          <span>아니요 (아이폰 스냅 단독)</span>
+          <span class="price">+50,000원</span>
+        </label>
+      </div>
+      ${s.errors.dolHasMainSnap ? `<div class="error">${s.errors.dolHasMainSnap}</div>` : ''}
+    `;
+  }
+
+  return `
+    <div class="card">
+      <h2>4. 추가 옵션</h2>
+      <h3>선택 옵션</h3>
+      <div class="checkbox-group">${options}</div>
+      ${dolQuestion}
+      <div class="actions">
+        <button class="btn btn-secondary" data-action="prev">이전</button>
+        <button class="btn btn-primary" data-action="next">다음</button>
+      </div>
+    </div>
+  `;
+});
+
+// ============================
+// Step 5: 할인 적용
+// ============================
+registerRenderer(5, s => {
+  const immediate = Object.entries(IMMEDIATE_DISCOUNTS).map(([code, d]) => {
+    if (d.appliesTo !== 'all' && !d.appliesTo.includes(s.data.product)) return '';
+    const checked = s.data.immediateDiscounts.includes(code) ? 'checked' : '';
+    const cls = s.data.immediateDiscounts.includes(code) ? 'selected' : '';
+    return `
+      <label class="checkbox-option ${cls}">
+        <input type="checkbox" data-bind="immediateDiscounts" value="${code}" ${checked}>
+        <span>${d.name}</span>
+        <span class="price">${d.amount.toLocaleString('ko-KR')}원</span>
+      </label>`;
+  }).join('');
+
+  const promise = Object.entries(PROMISE_DISCOUNTS).map(([code, d]) => {
+    const checked = s.data.promiseDiscounts.includes(code) ? 'checked' : '';
+    const cls = s.data.promiseDiscounts.includes(code) ? 'selected' : '';
+    return `
+      <label class="checkbox-option ${cls}">
+        <input type="checkbox" data-bind="promiseDiscounts" value="${code}" ${checked}>
+        <span>${d.name} <span class="badge-warn">약속</span></span>
+        <span class="price">${d.amount.toLocaleString('ko-KR')}원</span>
+      </label>`;
+  }).join('');
+
+  const partnerField = s.data.immediateDiscounts.includes('partner')
+    ? `
+      <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
+        <label>짝꿍코드 * (필수 입력)</label>
+        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: KHR2026">
+        ${s.errors.partnerCode ? `<div class="error">${s.errors.partnerCode}</div>` : ''}
+      </div>`
+    : '';
+
+  return `
+    <div class="card">
+      <h2>5. 할인 적용</h2>
+      <h3>즉시 적용 할인 (총액에서 바로 차감)</h3>
+      <div class="checkbox-group">${immediate}</div>
+      ${partnerField}
+      <h3>후기 약속 할인 (실제 후기 URL 전달 시 잔금에서 차감)</h3>
+      <div class="checkbox-group">${promise}</div>
+      <div class="info-box">약속 할인은 계약 시점 총액엔 반영되지 않으며, 나중에 후기 작성 후 사장님께 URL을 보내주시면 잔금에서 차감됩니다.</div>
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
         <button class="btn btn-primary" data-action="next">다음</button>
