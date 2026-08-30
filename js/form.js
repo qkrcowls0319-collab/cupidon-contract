@@ -138,6 +138,12 @@ function goNext() {
 
 function goPrev() {
   if (state.currentStep > 1) {
+    if (state.currentStep === 8) {
+      submissionState.status = 'idle';
+      submissionState.error = null;
+      submissionState.pdfBlob = null;
+      submissionState.pdfFilename = null;
+    }
     state.currentStep--;
     state.errors = {};
     render();
