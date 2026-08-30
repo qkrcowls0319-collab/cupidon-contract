@@ -563,25 +563,36 @@ registerRenderer(8, s => {
     return `<div class="card"><h2>PDF 생성 중...</h2><p>계약서를 만들고 있습니다.</p></div>`;
   }
   if (submissionState.status === 'success') {
+    const productName = PRODUCTS[s.data.product]?.name || '';
     return `
       <div class="card success-box">
         <div class="check">✓</div>
         <h2>계약서가 준비되었습니다!</h2>
-        <p style="color:#666">계약서 PDF가 방금 자동으로 다운로드되었습니다.</p>
+        <p style="color:var(--text-mute)">서명된 계약서 PDF가 다운로드되었습니다.</p>
 
-        <div class="info-box" style="text-align:left;background:#fff3cd;border-left-color:#f5a623">
-          <strong>⭐ 마지막 단계 (필수):</strong><br>
-          아래 <strong>"카카오톡으로 계약서 보내기"</strong> 버튼을 눌러 사장님께 계약서 PDF를 전송해주세요.<br>
-          <span style="font-size:12px;color:#888">(카톡 채널이 열리면, 방금 다운로드된 PDF 파일을 채팅창에 첨부해서 보내주세요.)</span>
+        <div class="send-primary-box">
+          <div class="send-primary-title">📤 이제 사장님께 계약서를 전송해주세요</div>
+          <button id="share-pdf-btn" class="btn btn-share">
+            📎 계약서 사장님께 전송하기
+          </button>
+          <div id="share-hint" class="send-hint">
+            <span class="share-mobile-hint">모바일: 공유 시트에서 <strong>카카오톡</strong> 선택 후 큐피돈 채널 선택</span>
+            <span class="share-desktop-hint">PC: 카톡 채널이 열리면, 다운로드된 PDF를 채팅창에 드래그해서 넣어주세요</span>
+          </div>
         </div>
 
-        <div class="actions" style="flex-direction:column;gap:10px">
-          <a href="${OWNER_INFO.kakaoChannelUrl}" target="_blank" rel="noopener"
-             class="btn btn-primary"
-             style="background:#FEE500;color:#3C1E1E;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px">
-            💬 카카오톡으로 계약서 보내기
-          </a>
+        <div class="send-steps">
+          <div class="send-steps-title">📋 전송 방법 안내</div>
+          <ol class="send-steps-list">
+            <li>위 <strong>"계약서 사장님께 전송하기"</strong> 버튼 클릭</li>
+            <li><strong>카카오톡</strong> 앱 또는 <strong>채널 채팅창</strong>이 열림</li>
+            <li>방금 다운로드된 <strong>PDF 파일</strong>을 채팅창에 첨부해서 전송</li>
+          </ol>
+        </div>
+
+        <div class="actions" style="flex-direction:column;gap:10px;margin-top:16px">
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
+          <button class="btn btn-secondary" id="copy-msg-btn">📋 채팅 메시지 복사 (${productName})</button>
         </div>
 
         <div class="deposit-box">
@@ -596,6 +607,7 @@ registerRenderer(8, s => {
             <div><strong>은행:</strong> ${OWNER_INFO.bankName}</div>
             <div><strong>계좌:</strong> ${OWNER_INFO.bankAccount}</div>
             <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
+            <button class="btn-copy-account" id="copy-account-btn">계좌번호 복사</button>
           </div>
         </div>
       </div>
@@ -621,7 +633,97 @@ registerRenderer(8, s => {
     submissionState.status = 'idle';
     render();
   });
+
+  // ========== 계약서 전송 버튼 (Web Share API + 폴백) ==========
+  const shareBtn = document.getElementById('share-pdf-btn');
+  if (shareBtn) {
+    const canShareFile = () => {
+      if (!navigator.share || !submissionState.pdfBlob) return false;
+      const file = new File([submissionState.pdfBlob], submissionState.pdfFilename, { type: 'application/pdf' });
+      return navigator.canShare && navigator.canShare({ files: [file] });
+    };
+
+    // 지원 여부에 따라 힌트 문구 조정
+    const hint = document.getElementById('share-hint');
+    if (hint) {
+      if (canShareFile()) {
+        hint.querySelector('.share-mobile-hint').style.display = 'block';
+        hint.querySelector('.share-desktop-hint').style.display = 'none';
+      } else {
+        hint.querySelector('.share-mobile-hint').style.display = 'none';
+        hint.querySelector('.share-desktop-hint').style.display = 'block';
+      }
+    }
+
+    shareBtn.addEventListener('click', async () => {
+      const message = buildKakaoMessage();
+      // 1) Web Share API 사용 가능 시 → 카톡 앱에 파일 첨부 (진짜 자동 첨부!)
+      if (canShareFile()) {
+        try {
+          const file = new File([submissionState.pdfBlob], submissionState.pdfFilename, { type: 'application/pdf' });
+          await navigator.share({
+            title: '큐피돈 스냅 계약서',
+            text: message,
+            files: [file],
+          });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return; // 사용자가 취소
+          console.warn('Web Share 실패, 폴백:', err);
+        }
+      }
+      // 2) 폴백: 클립보드에 메시지 복사 + 카톡 채널 새 탭 오픈
+      try {
+        await navigator.clipboard.writeText(message);
+        alert('📋 채팅 메시지가 복사되었습니다.\n\n카카오톡 채팅창이 열리면:\n1) 메시지 붙여넣기(Ctrl+V)\n2) + 버튼 눌러 다운로드된 PDF 파일 첨부\n3) 전송');
+      } catch (e) {
+        // 클립보드 실패해도 카톡 창은 열어줌
+      }
+      window.open(OWNER_INFO.kakaoChannelUrl, '_blank', 'noopener');
+    });
+  }
+
+  // 채팅 메시지 복사 버튼
+  const copyMsg = document.getElementById('copy-msg-btn');
+  if (copyMsg) {
+    copyMsg.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(buildKakaoMessage());
+        copyMsg.textContent = '✓ 복사되었습니다';
+        setTimeout(() => { copyMsg.textContent = '📋 채팅 메시지 복사'; }, 2000);
+      } catch (e) {
+        alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+      }
+    });
+  }
+
+  // 계좌번호 복사 버튼
+  const copyAcc = document.getElementById('copy-account-btn');
+  if (copyAcc) {
+    copyAcc.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(OWNER_INFO.bankAccount);
+        copyAcc.textContent = '✓ 복사됨';
+        setTimeout(() => { copyAcc.textContent = '계좌번호 복사'; }, 2000);
+      } catch (e) {
+        alert('복사에 실패했습니다.');
+      }
+    });
+  }
 });
+
+function buildKakaoMessage() {
+  const d = state.data;
+  const productName = PRODUCTS[d.product]?.name || '';
+  return `[큐피돈 아이폰 스냅 계약]
+성함: ${d.customerName}
+연락처: ${d.customerPhone}
+상품: ${productName}
+예식일: ${d.eventDate} ${d.eventTime}
+장소: ${d.venue}
+
+계약서 PDF 첨부드립니다. 확인 부탁드립니다!`;
+}
 
 async function submitContract() {
   submissionState.status = 'submitting';
