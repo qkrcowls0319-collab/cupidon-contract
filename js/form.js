@@ -93,9 +93,13 @@ function attachCommonHandlers() {
         }
       });
     } else {
+      // 텍스트/tel/date/time 입력은 state만 업데이트 (한글 IME 조합이 재렌더로 깨지는 문제 방지)
       el.addEventListener('input', () => {
         state.data[key] = el.value;
-        onDataChange();
+      });
+      // blur 시점에만 재렌더 (에러 표시 등 최신 상태 반영)
+      el.addEventListener('blur', () => {
+        state.data[key] = el.value;
       });
     }
   });
@@ -193,12 +197,12 @@ registerRenderer(2, s => {
       <h2>2. 행사 정보</h2>
       <div class="field ${s.errors.eventDate ? 'has-error' : ''}">
         <label>예식일자 *</label>
-        <input type="date" data-bind="eventDate" value="${s.data.eventDate}">
+        <input type="text" id="fp-date" data-bind="eventDate" value="${s.data.eventDate}" placeholder="예식 날짜를 선택하세요" readonly>
         ${s.errors.eventDate ? `<div class="error">${s.errors.eventDate}</div>` : ''}
       </div>
       <div class="field ${s.errors.eventTime ? 'has-error' : ''}">
         <label>예식시간 *</label>
-        <input type="time" data-bind="eventTime" value="${s.data.eventTime}">
+        <input type="text" id="fp-time" data-bind="eventTime" value="${s.data.eventTime}" placeholder="예식 시간을 선택하세요" readonly>
         ${s.errors.eventTime ? `<div class="error">${s.errors.eventTime}</div>` : ''}
       </div>
       <div class="field ${s.errors.venue ? 'has-error' : ''}">
@@ -218,6 +222,38 @@ registerRenderer(2, s => {
       </div>
     </div>
   `;
+}, (s) => {
+  // Step 2 afterRender: flatpickr 초기화 (한국어)
+  if (typeof flatpickr === 'undefined') return;
+  const koLocale = window.flatpickr?.l10ns?.ko || 'ko';
+
+  const dateEl = document.getElementById('fp-date');
+  if (dateEl) {
+    flatpickr(dateEl, {
+      locale: koLocale,
+      dateFormat: 'Y-m-d',
+      altInput: true,
+      altFormat: 'Y년 m월 d일 (D)',
+      minDate: 'today',
+      onChange: (selectedDates, dateStr) => {
+        s.data.eventDate = dateStr;
+      },
+    });
+  }
+  const timeEl = document.getElementById('fp-time');
+  if (timeEl) {
+    flatpickr(timeEl, {
+      locale: koLocale,
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: 'H:i',
+      time_24hr: false,
+      minuteIncrement: 10,
+      onChange: (selectedDates, dateStr) => {
+        s.data.eventTime = dateStr;
+      },
+    });
+  }
 });
 
 // ============================
