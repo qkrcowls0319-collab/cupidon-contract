@@ -1,4 +1,4 @@
-import { PRODUCTS, IMMEDIATE_DISCOUNTS, PROMISE_DISCOUNTS, OWNER_INFO } from './config.js';
+import { PRODUCTS, IMMEDIATE_DISCOUNTS, PROMISE_DISCOUNTS, OWNER_INFO, FIXED_DEPOSIT } from './config.js';
 
 /**
  * 견적 결과와 폼 데이터로 계약서 HTML 조각을 생성.
@@ -69,7 +69,7 @@ export function renderContractHTML({ formData, quote, todayStr }) {
       <h3 style="border-bottom:2px solid #333;padding-bottom:4px;margin-top:20px">2. 결제 및 환불 안내</h3>
       <ul>
         <li>잔금은 예식 7일 전까지 완납해주셔야 합니다.</li>
-        <li>계약금은 <strong>100,000원 입금</strong>을 통해 예약이 확정됩니다.</li>
+        <li>계약금은 <strong>${priceStr(FIXED_DEPOSIT)} 입금</strong>을 통해 예약이 확정됩니다.</li>
         <li>예약 확정일 기준 14일 이내: 계약금 100% 환불 가능</li>
         <li>예약 확정일 기준 14일 이후: 계약금 환불 불가</li>
         <li>천재지변 등 불가피한 사유: 계약금 환불 가능</li>
@@ -86,7 +86,7 @@ export function renderContractHTML({ formData, quote, todayStr }) {
       </p>
 
       <div style="margin-top:24px;padding:12px;border:1px solid #ccc;border-radius:6px">
-        <div><strong>계약금:</strong> 100,000원 &nbsp;&nbsp; <strong>잔금:</strong> ${priceStr(quote.balance)}</div>
+        <div><strong>계약금:</strong> ${priceStr(FIXED_DEPOSIT)} &nbsp;&nbsp; <strong>잔금:</strong> ${priceStr(quote.balance)}</div>
         <div><strong>총액:</strong> ${priceStr(quote.total)}</div>
         ${travelNote}
         ${promiseSection}
