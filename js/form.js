@@ -31,6 +31,8 @@ const DEFAULT_DATA = {
   quoteConfirmed: false,
   signature: '',
   agreed: false,
+  submittedAt: '',      // 시트 전송 완료 시각 (중복 전송 방지 플래그)
+  submissionId: '',     // 고유 제출 ID (서버측 중복 검증용)
 };
 
 // localStorage에서 저장된 세션 복원 (있으면)
@@ -878,6 +880,13 @@ ${productLine}
 }
 
 async function submitContract() {
+  // Guard 1: 이미 처리 중 or 완료된 상태면 재실행 방지 (중복 클릭·리렌더 대응)
+  if (submissionState.status === 'submitting' || submissionState.status === 'success') return;
+
+  // Guard 2: 이미 시트로 전송 완료된 계약이면 (재접속 케이스)
+  //   → PDF만 재생성해서 다운로드는 하되, 시트 재전송은 스킵
+  const alreadySubmitted = !!state.data.submittedAt;
+
   submissionState.status = 'submitting';
   render();
   try {
@@ -887,10 +896,18 @@ async function submitContract() {
     downloadBlob(result.blob, result.filename);
     submissionState.status = 'success';
 
-    // Google Sheets 자동 저장 (PDF 링크 포함, fire-and-forget)
-    sendToGoogleSheets(state.data, result.quote, result.base64, result.filename).catch(err =>
-      console.warn('Sheets 저장 실패:', err)
-    );
+    if (!alreadySubmitted) {
+      // 최초 제출 시에만 시트 전송 + 완료 마크 저장
+      if (!state.data.submissionId) {
+        state.data.submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      }
+      state.data.submittedAt = new Date().toISOString();
+      saveSession();
+
+      sendToGoogleSheets(state.data, result.quote, result.base64, result.filename).catch(err =>
+        console.warn('Sheets 저장 실패:', err)
+      );
+    }
   } catch (err) {
     console.error('PDF 생성 실패:', err);
     submissionState.error = err.message;
@@ -911,7 +928,8 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
   const promiseNames = data.promiseDiscounts.map(c => PROMISE_DISCOUNTS[c]?.name).filter(Boolean).join(', ');
 
   const payload = {
-    submittedAt: new Date().toISOString(),
+    submissionId: data.submissionId || '',
+    submittedAt: data.submittedAt || new Date().toISOString(),
     customerName: data.customerName,
     customerPhone: data.customerPhone,
     eventDate: data.eventDate,
