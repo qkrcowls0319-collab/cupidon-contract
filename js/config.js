@@ -103,11 +103,15 @@ export const OPTIONS_WEDDING = {
   colorPlus10: { name: '색보정 추가 10장', amount: 50000 },
   part2: { name: '2부 촬영 추가', amount: 70000 },
   pyebaek: { name: '폐백 촬영 추가', amount: 50000 },
+  vintageDigicam: { name: '빈티지 디카', amount: 30000 },
+  chukuidae2: { name: '축의대 2인 1팀', amount: 390000 },
+  chukuidae4: { name: '축의대 4인 2팀', amount: 690000 },
 };
 
 export const OPTIONS_STUDIO_DOL = {
   finalPlus5: { name: '최종본 추가 5장', amount: 50000 },
   part2Half: { name: '2부 촬영 추가 (30분)', amount: 50000 },
+  vintageDigicam: { name: '빈티지 디카', amount: 30000 },
 };
 
 // 출장비
