@@ -21,8 +21,8 @@ export function renderContractHTML({ formData, quote, todayStr }) {
   // 옵션 라인
   const optionLabels = formData.options.map(code => {
     const table = product.hasWeddingOptions
-      ? { finalPlus5: '최종본 5장', colorPlus10: '색보정 10장', part2: '2부 촬영', pyebaek: '폐백 촬영' }
-      : { finalPlus5: '최종본 5장', part2Half: '2부 촬영(30분)' };
+      ? { finalPlus5: '최종본 5장', colorPlus10: '색보정 10장', part2: '2부 촬영', pyebaek: '폐백 촬영', vintageDigicam: '빈티지 디카', chukuidae2: '축의대 2인 1팀', chukuidae4: '축의대 4인 2팀' }
+      : { finalPlus5: '최종본 5장', part2Half: '2부 촬영(30분)', vintageDigicam: '빈티지 디카' };
     return `${table[code]} → +${priceStr(optionAmount(product, code))}`;
   });
   const optionSection = optionLabels.length
@@ -145,8 +145,8 @@ export function renderContractHTML({ formData, quote, todayStr }) {
 }
 
 function optionAmount(product, code) {
-  const w = { finalPlus5: 50000, colorPlus10: 50000, part2: 70000, pyebaek: 50000 };
-  const s = { finalPlus5: 50000, part2Half: 50000 };
+  const w = { finalPlus5: 50000, colorPlus10: 50000, part2: 70000, pyebaek: 50000, vintageDigicam: 30000, chukuidae2: 390000, chukuidae4: 690000 };
+  const s = { finalPlus5: 50000, part2Half: 50000, vintageDigicam: 30000 };
   return product.hasWeddingOptions ? (w[code] || 0) : (s[code] || 0);
 }
 
