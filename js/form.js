@@ -1,16 +1,17 @@
 import {
   PRODUCTS,
   TRAVEL_FEE,
-  IMMEDIATE_DISCOUNTS,
-  PROMISE_DISCOUNTS,
-  OPTIONS_WEDDING,
-  OPTIONS_STUDIO_DOL,
   OWNER_INFO,
-  FIXED_DEPOSIT,
-  SHEETS_WEBHOOK_URL,
+  SHEETS_WEBHOOK_URLS,
 } from './config.js';
 import { validateStep } from './validators.js';
-import { calculateQuote } from './pricing.js';
+import {
+  calculateQuote,
+  getOptionsTable,
+  getImmediateDiscounts,
+  getPromiseDiscounts,
+  getTravelFeeTable,
+} from './pricing.js';
 import { generateContractPDF, downloadBlob } from './pdf.js';
 
 const STORAGE_KEY = 'cupidon-contract-session-v1';
@@ -341,28 +342,38 @@ registerRenderer(2, s => {
 });
 
 // ============================
-// Step 3: 상품 선택
+// Step 3: 상품 선택 (카테고리별 그룹핑)
 // ============================
 registerRenderer(3, s => {
-  const cards = Object.values(PRODUCTS).map(p => {
+  const renderCard = p => {
     const checked = s.data.product === p.code ? 'checked' : '';
     const cls = s.data.product === p.code ? 'selected' : '';
     const specs = Object.entries(p.spec).slice(0, 4).map(([k, v]) => `${k} ${v}`).join(' / ');
+    const subtitle = p.subtitle ? ` <span style="color:#888;font-size:13px">· ${p.subtitle}</span>` : '';
     return `
       <label class="radio-option ${cls}">
         <input type="radio" name="product" data-bind="product" value="${p.code}" ${checked}>
         <div style="flex:1">
-          <div><strong>${p.name}</strong></div>
+          <div><strong>${p.name}</strong>${subtitle}</div>
           <span class="desc">${specs}</span>
         </div>
         <span class="price">${p.basePrice.toLocaleString('ko-KR')}원</span>
       </label>`;
-  }).join('');
+  };
+
+  const snapProducts = Object.values(PRODUCTS).filter(p => p.category === 'snap').map(renderCard).join('');
+  const chukuidaeProducts = Object.values(PRODUCTS).filter(p => p.category === 'chukuidae').map(renderCard).join('');
+
   return `
     <div class="card">
       <h2>3. 상품 선택</h2>
       <div class="field ${s.errors.product ? 'has-error' : ''}">
-        <div class="radio-group">${cards}</div>
+        <h3 style="margin-top:8px">📸 아이폰 스냅</h3>
+        <div class="radio-group">${snapProducts}</div>
+
+        <h3 style="margin-top:20px">🎀 큐피돈 × 더체크 축의대</h3>
+        <div class="radio-group">${chukuidaeProducts}</div>
+
         ${s.errors.product ? `<div class="error">${s.errors.product}</div>` : ''}
       </div>
       <div class="actions">
@@ -374,14 +385,14 @@ registerRenderer(3, s => {
 });
 
 // ============================
-// Step 4: 추가 옵션
+// Step 4: 추가 옵션 (카테고리별 옵션 테이블)
 // ============================
 registerRenderer(4, s => {
   if (!s.data.product) {
     return `<div class="card"><p>상품을 먼저 선택해주세요.</p><div class="actions"><button class="btn btn-secondary" data-action="prev">이전</button></div></div>`;
   }
   const product = PRODUCTS[s.data.product];
-  const optionsTable = product.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const optionsTable = getOptionsTable(product);
   const options = Object.entries(optionsTable).map(([code, o]) => {
     const checked = s.data.options.includes(code) ? 'checked' : '';
     const cls = s.data.options.includes(code) ? 'selected' : '';
@@ -393,7 +404,7 @@ registerRenderer(4, s => {
       </label>`;
   }).join('');
 
-  // 돌스냅 아이폰 단독 여부
+  // 돌스냅 아이폰 단독 여부 (돌스냅에만 노출)
   let dolQuestion = '';
   if (s.data.product === 'dol') {
     const hasMainYes = s.data.dolHasMainSnap === true ? 'checked' : '';
@@ -432,11 +443,15 @@ registerRenderer(4, s => {
 });
 
 // ============================
-// Step 5: 할인 적용
+// Step 5: 할인 적용 (카테고리별 할인 테이블)
 // ============================
 registerRenderer(5, s => {
-  const immediate = Object.entries(IMMEDIATE_DISCOUNTS).map(([code, d]) => {
-    if (d.appliesTo !== 'all' && !d.appliesTo.includes(s.data.product)) return '';
+  const product = PRODUCTS[s.data.product];
+  const immediateTable = getImmediateDiscounts(product);
+  const promiseTable = getPromiseDiscounts(product);
+
+  const immediate = Object.entries(immediateTable).map(([code, d]) => {
+    if (d.appliesTo && d.appliesTo !== 'all' && !d.appliesTo.includes(s.data.product)) return '';
     const checked = s.data.immediateDiscounts.includes(code) ? 'checked' : '';
     const cls = s.data.immediateDiscounts.includes(code) ? 'selected' : '';
     return `
@@ -447,7 +462,7 @@ registerRenderer(5, s => {
       </label>`;
   }).join('');
 
-  const promise = Object.entries(PROMISE_DISCOUNTS).map(([code, d]) => {
+  const promise = Object.entries(promiseTable).map(([code, d]) => {
     const checked = s.data.promiseDiscounts.includes(code) ? 'checked' : '';
     const cls = s.data.promiseDiscounts.includes(code) ? 'selected' : '';
     return `
@@ -458,7 +473,8 @@ registerRenderer(5, s => {
       </label>`;
   }).join('');
 
-  const partnerField = s.data.immediateDiscounts.includes('partner')
+  // 짝꿍코드는 스냅 상품 전용 (축의대엔 없음)
+  const partnerField = s.data.immediateDiscounts.includes('partner') && product?.category === 'snap'
     ? `
       <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
         <label>짝꿍코드 * (필수 입력)</label>
@@ -498,21 +514,26 @@ registerRenderer(6, s => {
   });
   const p = n => n.toLocaleString('ko-KR') + '원';
   const product = PRODUCTS[s.data.product];
-  const optionsTable = product.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const optionsTable = getOptionsTable(product);
+  const immediateTable = getImmediateDiscounts(product);
+  const promiseTable = getPromiseDiscounts(product);
 
   const optionLines = s.data.options.map(code => {
     const o = optionsTable[code];
+    if (!o) return '';
     return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(o.amount)}</span></div>`;
   }).join('');
 
   const immediateLines = s.data.immediateDiscounts.map(code => {
-    const d = IMMEDIATE_DISCOUNTS[code];
+    const d = immediateTable[code];
+    if (!d) return '';
     const label = code === 'partner' && s.data.partnerCode ? `${d.name} (${s.data.partnerCode})` : d.name;
     return `<div class="quote-line"><span>${label}</span><span>${p(d.amount)}</span></div>`;
   }).join('');
 
   const promiseLines = s.data.promiseDiscounts.map(code => {
-    const d = PROMISE_DISCOUNTS[code];
+    const d = promiseTable[code];
+    if (!d) return '';
     return `<div class="quote-line promise-line"><span>${d.name} <span class="badge-warn">약속</span></span><span>${p(d.amount)}</span></div>`;
   }).join('');
 
@@ -568,12 +589,13 @@ registerRenderer(6, s => {
 // ============================
 registerRenderer(7, s => {
   const agreedChecked = s.data.agreed ? 'checked' : '';
+  const quote7 = _computeQuote(s);
   return `
     <div class="card">
       <h2>7. 계약 동의 및 서명</h2>
       <div class="info-box">
         <strong>${PRODUCTS[s.data.product].name}</strong> 상품을 선택하셨습니다.<br>
-        계약금 ${FIXED_DEPOSIT.toLocaleString('ko-KR')}원, 잔금 ${(_lastQuoteTotalMinusDeposit(s)).toLocaleString('ko-KR')}원.<br>
+        계약금 ${quote7.deposit.toLocaleString('ko-KR')}원, 잔금 ${quote7.balance.toLocaleString('ko-KR')}원.<br>
         예식일: ${s.data.eventDate} ${s.data.eventTime} / 장소: ${escapeAttr(s.data.venue)}
       </div>
       <div class="field ${s.errors.agreed ? 'has-error' : ''}">
@@ -616,8 +638,8 @@ registerRenderer(7, s => {
   });
 });
 
-function _lastQuoteTotalMinusDeposit(s) {
-  const q = calculateQuote({
+function _computeQuote(s) {
+  return calculateQuote({
     product: s.data.product,
     region: s.data.region,
     options: s.data.options,
@@ -625,7 +647,6 @@ function _lastQuoteTotalMinusDeposit(s) {
     promiseDiscounts: s.data.promiseDiscounts,
     dolHasMainSnap: s.data.dolHasMainSnap,
   });
-  return q.balance;
 }
 
 function escapeAttr(str) {
@@ -668,7 +689,7 @@ registerRenderer(8, s => {
           <div class="send-steps-title">✅ 이후 진행 절차</div>
           <ol class="send-steps-list">
             <li>사장님이 신청 내역 확인 후 <strong>예약 등록</strong></li>
-            <li>고객님이 아래 계좌로 <strong>계약금 100,000원 입금</strong> (1시간 이내)</li>
+            <li>고객님이 아래 계좌로 <strong>계약금 ${_computeQuote(s).deposit.toLocaleString('ko-KR')}원 입금</strong> (1시간 이내)</li>
             <li>사장님이 <strong>서명된 계약서 PDF를 카톡으로 전달</strong>드립니다</li>
           </ol>
         </div>
@@ -683,7 +704,7 @@ registerRenderer(8, s => {
           <div class="deposit-title">💰 계약금 입금 안내</div>
           <div class="deposit-alert">
             <div class="deposit-alert-title">⏰ 1시간 이내 입금 필수</div>
-            <div class="deposit-alert-body">계약금 <strong>${FIXED_DEPOSIT.toLocaleString('ko-KR')}원</strong>을
+            <div class="deposit-alert-body">계약금 <strong>${_computeQuote(s).deposit.toLocaleString('ko-KR')}원</strong>을
             <strong>1시간 이내</strong>로 입금해주셔야 예약이 <strong>최종 확정</strong>됩니다.<br>
             <span style="font-size:12px;color:#8a6d3b">시간 내 미입금 시 예약이 자동 취소될 수 있습니다.</span></div>
           </div>
@@ -819,7 +840,10 @@ function buildKakaoMessage() {
   const d = state.data;
   const product = PRODUCTS[d.product];
   const productName = product?.name || '';
-  const optionsTable = product?.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const optionsTable = getOptionsTable(product);
+  const immediateTable = getImmediateDiscounts(product);
+  const promiseTable = getPromiseDiscounts(product);
+  const travelTable = getTravelFeeTable(product);
   const p = n => n.toLocaleString('ko-KR');
 
   const quote = calculateQuote({
@@ -831,27 +855,33 @@ function buildKakaoMessage() {
     dolHasMainSnap: d.dolHasMainSnap,
   });
 
-  const regionLabel = TRAVEL_FEE[d.region]?.name || d.region;
+  const regionLabel = travelTable[d.region]?.name || TRAVEL_FEE[d.region]?.name || d.region;
+  const categoryLabel = product?.category === 'chukuidae' ? '축의대' : '스냅';
 
   // 상품 + 옵션 (인라인)
   const optionText = d.options.length
-    ? d.options.map(c => optionsTable[c].name).join(', ')
+    ? d.options.map(c => optionsTable[c]?.name).filter(Boolean).join(', ')
     : '';
   const dolAlone = d.product === 'dol' && d.dolHasMainSnap === false ? ' + 아이폰 단독(+50,000)' : '';
   const productLine = optionText
     ? `📷 상품: ${productName} + ${optionText}${dolAlone}`
     : `📷 상품: ${productName}${dolAlone}`;
 
-  // 할인 요약
+  // 할인 요약 (카테고리별 축약 라벨)
+  const shortLabels = {
+    sameDay: '당일계약', portrait: '초상권', partner: '짝꿍',
+    blogPromise: '블로그', cupidonPromise: '큐피돈',
+    contractReview: '계약후기', usageReview: '이용후기',
+  };
   const immediateText = d.immediateDiscounts.length
     ? d.immediateDiscounts.map(c => {
         if (c === 'partner' && d.partnerCode) return `짝꿍[${d.partnerCode}]`;
-        return { sameDay: '당일계약', portrait: '초상권', partner: '짝꿍' }[c] || IMMEDIATE_DISCOUNTS[c].name;
+        return shortLabels[c] || immediateTable[c]?.name || c;
       }).join(', ')
     : '없음';
 
   const promiseText = d.promiseDiscounts.length
-    ? d.promiseDiscounts.map(c => ({ blogPromise: '블로그', cupidonPromise: '큐피돈' }[c] || PROMISE_DISCOUNTS[c].name)).join(', ')
+    ? d.promiseDiscounts.map(c => shortLabels[c] || promiseTable[c]?.name || c).join(', ')
     : '';
 
   const promiseLine = promiseText
@@ -862,7 +892,7 @@ function buildKakaoMessage() {
     ? ' (출장비 별도)'
     : quote.travelFee > 0 ? ` (출장비 +${p(quote.travelFee)})` : '';
 
-  return `[큐피돈 계약 신청]
+  return `[큐피돈 ${categoryLabel} 계약 신청]
 
 ${d.customerName} / ${d.customerPhone}
 📅 ${d.eventDate} ${d.eventTime} · ${d.venue} · ${regionLabel}
@@ -917,15 +947,20 @@ async function submitContract() {
 }
 
 async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
-  if (!SHEETS_WEBHOOK_URL) return; // 세팅 안 됐으면 스킵
   const product = PRODUCTS[data.product];
-  const optionsTable = product?.hasWeddingOptions ? OPTIONS_WEDDING : OPTIONS_STUDIO_DOL;
+  const categoryKey = product?.category === 'chukuidae' ? 'chukuidae' : 'snap';
+  const webhookUrl = SHEETS_WEBHOOK_URLS[categoryKey];
+  if (!webhookUrl) return; // 해당 카테고리 웹훅이 세팅 안 됐으면 스킵
+  const optionsTable = getOptionsTable(product);
+  const immediateTable = getImmediateDiscounts(product);
+  const promiseTable = getPromiseDiscounts(product);
+  const travelTable = getTravelFeeTable(product);
   const optionNames = data.options.map(c => optionsTable[c]?.name).filter(Boolean).join(', ');
   const immediateNames = data.immediateDiscounts.map(c => {
     if (c === 'partner' && data.partnerCode) return `짝꿍[${data.partnerCode}]`;
-    return IMMEDIATE_DISCOUNTS[c]?.name;
+    return immediateTable[c]?.name;
   }).filter(Boolean).join(', ');
-  const promiseNames = data.promiseDiscounts.map(c => PROMISE_DISCOUNTS[c]?.name).filter(Boolean).join(', ');
+  const promiseNames = data.promiseDiscounts.map(c => promiseTable[c]?.name).filter(Boolean).join(', ');
 
   const payload = {
     submissionId: data.submissionId || '',
@@ -935,7 +970,8 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
     eventDate: data.eventDate,
     eventTime: data.eventTime,
     venue: data.venue,
-    region: TRAVEL_FEE[data.region]?.name || data.region,
+    region: travelTable[data.region]?.name || TRAVEL_FEE[data.region]?.name || data.region,
+    category: product?.category === 'chukuidae' ? '축의대' : '스냅',
     product: product?.name || data.product,
     options: optionNames,
     dolAloneSurcharge: data.product === 'dol' && data.dolHasMainSnap === false ? '적용(+50,000)' : '',
@@ -952,7 +988,7 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
   };
 
   // no-cors 모드로 전송 (Apps Script는 CORS 응답 헤더가 없어 반응 확인 불가하지만 데이터는 전달됨)
-  await fetch(SHEETS_WEBHOOK_URL, {
+  await fetch(webhookUrl, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },

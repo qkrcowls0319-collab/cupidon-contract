@@ -1,5 +1,6 @@
 import { renderContractHTML } from './templates.js';
 import { calculateQuote } from './pricing.js';
+import { PRODUCTS } from './config.js';
 
 /**
  * 계약서 PDF를 생성.
@@ -71,7 +72,9 @@ export async function generateContractPDF(formData) {
 
   const blob = pdf.output('blob');
   const base64 = pdf.output('datauristring').split(',')[1];
-  const filename = `큐피돈_계약서_${PRODUCT_LABEL(formData.product)}_${sanitizeFilename(formData.customerName)}_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.pdf`;
+  const product = PRODUCTS[formData.product];
+  const prefix = product?.category === 'chukuidae' ? '큐피돈_축의대_계약서' : '큐피돈_계약서';
+  const filename = `${prefix}_${PRODUCT_LABEL(formData.product)}_${sanitizeFilename(formData.customerName)}_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.pdf`;
 
   renderArea.innerHTML = '';
 
@@ -79,7 +82,10 @@ export async function generateContractPDF(formData) {
 }
 
 function PRODUCT_LABEL(code) {
-  return { special: '스페셜', premium: '프리미엄', studio: '스튜디오', dol: '돌스냅' }[code] || code;
+  return {
+    special: '스페셜', premium: '프리미엄', studio: '스튜디오', dol: '돌스냅',
+    chukuidaeStd: '스탠다드', chukuidaePremium: '프리미엄',
+  }[code] || code;
 }
 
 function sanitizeFilename(name) {

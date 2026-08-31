@@ -1,4 +1,4 @@
-// 큐피돈 스냅 상품·할인·옵션 상수. Source of Truth.
+// 큐피돈 스냅 · 축의대 상품·할인·옵션 상수. Source of Truth.
 // 가격 변경 시 이 파일만 수정.
 
 export const PRODUCTS = {
@@ -6,6 +6,7 @@ export const PRODUCTS = {
     code: 'special',
     name: '1인 스페셜',
     basePrice: 350000,
+    category: 'snap',
     hasWeddingOptions: true,
     spec: {
       원본: '800장',
@@ -26,6 +27,7 @@ export const PRODUCTS = {
     code: 'premium',
     name: '2인 프리미엄',
     basePrice: 550000,
+    category: 'snap',
     hasWeddingOptions: true,
     spec: {
       원본: '1,200장',
@@ -46,6 +48,7 @@ export const PRODUCTS = {
     code: 'studio',
     name: '스튜디오&가봉 스냅',
     basePrice: 200000,
+    category: 'snap',
     hasWeddingOptions: false,
     spec: {
       원본: '500장',
@@ -66,6 +69,7 @@ export const PRODUCTS = {
     code: 'dol',
     name: '돌스냅',
     basePrice: 300000,
+    category: 'snap',
     hasWeddingOptions: false,
     spec: {
       원본: '500장',
@@ -82,7 +86,54 @@ export const PRODUCTS = {
       '보정본&원본: 1개월간 보관, 이후 다운로드하지 않은 경우 책임지지 않음',
     ],
   },
+  chukuidaeStd: {
+    code: 'chukuidaeStd',
+    name: '축의대 스탠다드',
+    subtitle: '2인 1팀',
+    basePrice: 450000,
+    category: 'chukuidae',
+    spec: {
+      담당자: '2인 1팀 (격식 정장)',
+      도착: '예식 1시간 30분 전',
+      진행: '약 3시간 (예식 완료까지)',
+      장부: '실시간 디지털 장부(태블릿) + 정산 리포트',
+      보관: '이중잠금 축의금 보관함',
+      부가: '접수 영상 촬영 · 감사 화환·혼주 준비 촬영 · 현금영수증 발급',
+    },
+    deliveryNote: [
+      '축의금은 이중잠금 보관함에 실시간 보관',
+      '예식 종료 직후 봉투·명단·정산 리포트 인수인계',
+      '접수 실시간 영상 촬영본 및 감사 화환·혼주 준비 촬영본 예식 후 전달',
+      '현금영수증 발급 가능',
+    ],
+  },
+  chukuidaePremium: {
+    code: 'chukuidaePremium',
+    name: '축의대 프리미엄',
+    subtitle: '4인 2팀 · 양측 접수대 완벽 커버',
+    basePrice: 800000,
+    category: 'chukuidae',
+    spec: {
+      담당자: '4인 2팀 (양가 각 2인씩 · 격식 정장)',
+      도착: '예식 1시간 30분 전',
+      진행: '약 3시간 (예식 완료까지)',
+      커버: '신랑측·신부측 접수대 동시 운영',
+      장부: '실시간 디지털 장부(태블릿) + 정산 리포트',
+      보관: '이중잠금 축의금 보관함',
+      부가: '접수 영상 촬영 · 감사 화환·혼주 준비 촬영 · 현금영수증 발급',
+    },
+    deliveryNote: [
+      '양가 접수대 각각 이중잠금 보관함으로 실시간 관리',
+      '예식 종료 직후 봉투·명단·통합 정산 리포트 인수인계',
+      '접수 실시간 영상 촬영본 및 감사 화환·혼주 준비 촬영본 예식 후 전달',
+      '현금영수증 발급 가능',
+    ],
+  },
 };
+
+// ============================
+// 스냅 상품 할인 (기존)
+// ============================
 
 // A. 즉시 적용 할인 (총액에서 바로 차감)
 export const IMMEDIATE_DISCOUNTS = {
@@ -97,24 +148,54 @@ export const PROMISE_DISCOUNTS = {
   cupidonPromise: { name: '큐피돈 이용 후기 약속', amount: -10000, appliesTo: 'all' },
 };
 
+// ============================
+// 축의대 상품 할인 (짝꿍코드 없음)
+// ============================
+
+export const IMMEDIATE_DISCOUNTS_CHUKUIDAE = {
+  sameDay: { name: '당일 계약 할인', amount: -20000, appliesTo: 'all' },
+};
+
+export const PROMISE_DISCOUNTS_CHUKUIDAE = {
+  contractReview: { name: '계약 후기 약속', amount: -10000, appliesTo: 'all' },
+  usageReview: { name: '이용 후기 약속', amount: -20000, appliesTo: 'all' },
+};
+
+// ============================
 // 추가 옵션
+// ============================
+
+// 스냅 - 웨딩 상품 (special / premium)
 export const OPTIONS_WEDDING = {
   finalPlus5: { name: '최종본 추가 5장', amount: 50000 },
   colorPlus10: { name: '색보정 추가 10장', amount: 50000 },
   part2: { name: '2부 촬영 추가', amount: 70000 },
   pyebaek: { name: '폐백 촬영 추가', amount: 50000 },
   vintageDigicam: { name: '빈티지 디카', amount: 30000 },
-  chukuidae2: { name: '축의대 2인 1팀', amount: 390000 },
-  chukuidae4: { name: '축의대 4인 2팀', amount: 690000 },
+  chukuidae2: { name: '축의대 2인 1팀 (스탠다드 · 스냅 번들가)', amount: 380000 },
+  chukuidae4: { name: '축의대 4인 2팀 (프리미엄 · 스냅 번들가)', amount: 680000 },
 };
 
+// 스냅 - 스튜디오·돌
 export const OPTIONS_STUDIO_DOL = {
   finalPlus5: { name: '최종본 추가 5장', amount: 50000 },
   part2Half: { name: '2부 촬영 추가 (30분)', amount: 50000 },
   vintageDigicam: { name: '빈티지 디카', amount: 30000 },
 };
 
+// 축의대 전용 옵션
+// - 감사문자: 200명 이하 기준가. 초과분은 예식 후 후불 청구 (실제 발송 인원 기준 50명당 +10,000)
+export const OPTIONS_CHUKUIDAE = {
+  readyBag: { name: '레디백', amount: 10000 },
+  offlineLedger: { name: '오프라인 장부 (양가 혼주용, 1팀 기준)', amount: 30000 },
+  thankyouSMS: { name: '감사문자 발송 서비스 (200명 이하 기준 · 초과분 후불 청구)', amount: 30000 },
+};
+
+// ============================
 // 출장비
+// ============================
+
+// 스냅 출장비
 export const TRAVEL_FEE = {
   seoul: { name: '서울', amount: 0 },
   gyeonggi_incheon: { name: '경기·인천', amount: 50000 },
@@ -122,10 +203,21 @@ export const TRAVEL_FEE = {
   other: { name: '그 외 지역', amount: null }, // null = 별도 문의
 };
 
+// 축의대 출장비 (경기 이외 지역은 별도 문의)
+export const TRAVEL_FEE_CHUKUIDAE = {
+  seoul: { name: '서울', amount: 0 },
+  gyeonggi_incheon: { name: '경기·인천', amount: 50000 },
+  other: { name: '경기 이외 지역', amount: null }, // null = 별도 문의
+};
+
+// ============================
+// 기타
+// ============================
+
 // 돌스냅 아이폰 단독 촬영 가산금
 export const DOL_ALONE_SURCHARGE = 50000;
 
-// 계약금 (고정)
+// 계약금 (스냅·축의대 공통 고정)
 export const FIXED_DEPOSIT = 100000;
 
 // 사장님 정보 (계약서 하단·완료화면에 표시)
@@ -137,7 +229,13 @@ export const OWNER_INFO = {
   kakaoDisplayName: '큐피돈 스냅 카카오톡 채널',
 };
 
-// Google Sheets 자동 저장 웹훅 URL
+// Google Sheets 자동 저장 웹훅 URL (카테고리별 별도 시트)
 // 세팅 방법은 README의 "Google Sheets 신청 이력 관리" 섹션 참고
-// URL을 비워두면 자동 저장 기능은 비활성화됨 (계약서 흐름은 정상 작동)
-export const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx4eogBqNv8j4sedJ0kK2KtbO0zfH1bhJQ2FVg14Eyg2OKKP5gPR3HLJDjZKFPyZP3mVQ/exec';
+// URL을 비워두면 해당 카테고리의 자동 저장은 비활성화됨 (계약서 흐름은 정상 작동)
+export const SHEETS_WEBHOOK_URLS = {
+  snap: 'https://script.google.com/macros/s/AKfycbx4eogBqNv8j4sedJ0kK2KtbO0zfH1bhJQ2FVg14Eyg2OKKP5gPR3HLJDjZKFPyZP3mVQ/exec',
+  chukuidae: '', // 축의대용 Apps Script 배포 후 URL 여기에 입력
+};
+
+// 하위 호환 (기존 코드가 아직 import 하고 있으면 스냅 URL을 반환)
+export const SHEETS_WEBHOOK_URL = SHEETS_WEBHOOK_URLS.snap;
