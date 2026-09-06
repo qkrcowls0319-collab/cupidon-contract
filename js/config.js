@@ -195,6 +195,7 @@ export const OPTIONS_WEDDING = {
   part2: { name: '2부 촬영 추가', amount: 70000 },
   pyebaek: { name: '폐백 촬영 추가', amount: 50000 },
   vintageDigicam: { name: '빈티지 디카', amount: 30000 },
+  chukuidae1: { name: '축의대 1인 1팀 (베이직 · 스냅 번들가)', amount: 300000 },
   chukuidae2: { name: '축의대 2인 1팀 (스탠다드 · 스냅 번들가)', amount: 380000 },
   chukuidae4: { name: '축의대 4인 2팀 (프리미엄 · 스냅 번들가)', amount: 680000 },
 };
@@ -229,6 +230,7 @@ export const OPTIONS_CHUKUIDAE = {
 //   snapPremiumBundle amount = 550k(스냅 프리미엄) - BUNDLE_DISCOUNTS[주상품]
 // 어느 쪽에서 시작하든 총액이 동일해집니다.
 export const BUNDLE_DISCOUNTS = {
+  chukuidaeBasic: 50000,
   chukuidaeStd: 70000,
   chukuidaePremium: 120000,
 };

@@ -437,7 +437,7 @@ registerRenderer(4, s => {
   // 옵션을 "본상품 옵션"과 "번들 상대편 옵션"으로 분리
   const isChukuidaeOptCode = code => ['readyBag', 'offlineLedger', 'thankyouSMS'].includes(code);
   const isSnapBundleCode = code => ['snapSpecialBundle', 'snapPremiumBundle'].includes(code);
-  const isChukuidaeBundleCode = code => ['chukuidae2', 'chukuidae4'].includes(code);
+  const isChukuidaeBundleCode = code => ['chukuidae1', 'chukuidae2', 'chukuidae4'].includes(code);
 
   const entries = Object.entries(optionsTable);
   let ownGroup, otherGroup, otherGroupTitle;
