@@ -165,9 +165,9 @@ test('번들 대칭: 스냅 프리미엄 + 축의대 스탠다드 번들 = 축�
     options: ['snapPremiumBundle'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 550 + 380 = 930 vs 450 + 480 = 930
-  assertEqual(fromSnap.total, 930000, '스냅 → 축의대 총액');
-  assertEqual(fromChukuidae.total, 930000, '축의대 → 스냅 총액');
+  // 550 + 427.5 = 977.5 vs 450 + 527.5 = 977.5 (번들 할인 5% = -22.5k)
+  assertEqual(fromSnap.total, 977500, '스냅 → 축의대 총액');
+  assertEqual(fromChukuidae.total, 977500, '축의대 → 스냅 총액');
   assertEqual(fromSnap.total, fromChukuidae.total, '대칭성');
   assertEqual(fromSnap.isBundle, true, 'fromSnap isBundle');
   assertEqual(fromChukuidae.isBundle, true, 'fromChukuidae isBundle');
@@ -184,9 +184,9 @@ test('번들 대칭: 스냅 프리미엄 + 축의대 프리미엄 번들 (양방
     options: ['snapPremiumBundle'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 550 + 680 = 1230 vs 800 + 430 = 1230
-  assertEqual(fromSnap.total, 1230000, '스냅 → 축의대 총액');
-  assertEqual(fromChukuidae.total, 1230000, '축의대 → 스냅 총액');
+  // 550 + 760 = 1310 vs 800 + 510 = 1310 (번들 할인 5% = -40k)
+  assertEqual(fromSnap.total, 1310000, '스냅 → 축의대 총액');
+  assertEqual(fromChukuidae.total, 1310000, '축의대 → 스냅 총액');
 });
 
 test('번들 대칭: 스냅 스페셜 + 축의대 스탠다드 번들 (양방향)', () => {
@@ -200,9 +200,9 @@ test('번들 대칭: 스냅 스페셜 + 축의대 스탠다드 번들 (양방향
     options: ['snapSpecialBundle'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 350 + 380 = 730 vs 450 + 280 = 730
-  assertEqual(fromSnap.total, 730000, '스냅 → 축의대 총액');
-  assertEqual(fromChukuidae.total, 730000, '축의대 → 스냅 총액');
+  // 350 + 427.5 = 777.5 vs 450 + 327.5 = 777.5
+  assertEqual(fromSnap.total, 777500, '스냅 → 축의대 총액');
+  assertEqual(fromChukuidae.total, 777500, '축의대 → 스냅 총액');
 });
 
 test('번들 대칭: 스냅 스페셜 + 축의대 프리미엄 번들 (양방향)', () => {
@@ -216,9 +216,9 @@ test('번들 대칭: 스냅 스페셜 + 축의대 프리미엄 번들 (양방향
     options: ['snapSpecialBundle'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 350 + 680 = 1030 vs 800 + 230 = 1030
-  assertEqual(fromSnap.total, 1030000, '스냅 → 축의대 총액');
-  assertEqual(fromChukuidae.total, 1030000, '축의대 → 스냅 총액');
+  // 350 + 760 = 1110 vs 800 + 310 = 1110
+  assertEqual(fromSnap.total, 1110000, '스냅 → 축의대 총액');
+  assertEqual(fromChukuidae.total, 1110000, '축의대 → 스냅 총액');
 });
 
 test('번들 시 스냅 할인 테이블 사용 (축의대 상품에서 시작해도 sameDay -30k 적용)', () => {
@@ -229,9 +229,9 @@ test('번들 시 스냅 할인 테이블 사용 (축의대 상품에서 시작�
     promiseDiscounts: ['blogPromise', 'cupidonPromise'],
     dolHasMainSnap: null,
   });
-  // base 450 + snapPremiumBundle 480 = 930, - sameDay(30) - portrait(20) = 880
+  // base 450 + snapPremiumBundle 527.5 = 977.5, - sameDay(30) - portrait(20) = 927.5
   assertEqual(result.immediateDiscountTotal, -50000, 'sameDay + portrait = -50k (스냅 할인 테이블)');
-  assertEqual(result.total, 880000, 'total');
+  assertEqual(result.total, 927500, 'total');
   assertEqual(result.promiseTotal, -20000, 'promise total (블로그 + 큐피돈)');
 });
 
@@ -241,8 +241,8 @@ test('번들에 축의대 옵션(readyBag, thankyouSMS)도 추가 가능', () =>
     options: ['chukuidae4', 'readyBag', 'thankyouSMS'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 550 + 680 + 10 + 30 = 1270
-  assertEqual(fromSnap.total, 1270000, '스냅 번들 + 축의대 세부 옵션');
+  // 550 + 760 + 10 + 30 = 1350
+  assertEqual(fromSnap.total, 1350000, '스냅 번들 + 축의대 세부 옵션');
 });
 
 test('번들에 스냅 옵션(폐백, 색보정)도 추가 가능', () => {
@@ -251,8 +251,8 @@ test('번들에 스냅 옵션(폐백, 색보정)도 추가 가능', () => {
     options: ['snapPremiumBundle', 'pyebaek', 'colorPlus10'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
-  // 800 + 430 + 50 + 50 = 1330
-  assertEqual(fromChukuidae.total, 1330000, '축의대 번들 + 스냅 세부 옵션');
+  // 800 + 510 + 50 + 50 = 1410
+  assertEqual(fromChukuidae.total, 1410000, '축의대 번들 + 스냅 세부 옵션');
 });
 
 test('isBundle 판정', () => {
@@ -262,9 +262,13 @@ test('isBundle 판정', () => {
   assertEqual(isBundle(PRODUCTS.chukuidaeStd, ['readyBag']), false, '축의대 단독');
 });
 
-test('resolveOptionAmount: snapSpecialBundle이 축의대 상품에 따라 동적', () => {
-  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeStd, 'snapSpecialBundle'), 280000, '스탠다드 기준');
-  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaePremium, 'snapSpecialBundle'), 230000, '프리미엄 기준');
-  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeStd, 'snapPremiumBundle'), 480000, '스탠다드 기준');
-  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaePremium, 'snapPremiumBundle'), 430000, '프리미엄 기준');
+test('resolveOptionAmount: snapSpecialBundle이 축의대 상품에 따라 동적 (5%)', () => {
+  // snapSpecial 350k - {basic:17500, std:22500, premium:40000}
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeBasic, 'snapSpecialBundle'), 332500, '베이직 기준');
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeStd, 'snapSpecialBundle'), 327500, '스탠다드 기준');
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaePremium, 'snapSpecialBundle'), 310000, '프리미엄 기준');
+  // snapPremium 550k - {basic:17500, std:22500, premium:40000}
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeBasic, 'snapPremiumBundle'), 532500, '베이직 기준');
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaeStd, 'snapPremiumBundle'), 527500, '스탠다드 기준');
+  assertEqual(resolveOptionAmount(PRODUCTS.chukuidaePremium, 'snapPremiumBundle'), 510000, '프리미엄 기준');
 });
