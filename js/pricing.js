@@ -15,12 +15,12 @@ import {
 } from './config.js';
 
 // 번들 옵션 코드 — 상대 카테고리 상품을 옵션으로 얹는 코드들
-const SNAP_TO_CHUKUIDAE_BUNDLE_CODES = ['chukuidae2', 'chukuidae4'];
+const SNAP_TO_CHUKUIDAE_BUNDLE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4'];
 const CHUKUIDAE_TO_SNAP_BUNDLE_CODES = ['snapSpecialBundle', 'snapPremiumBundle'];
 
 // 상호배타 그룹 (한 번들 티어만 선택 가능)
 export const MUTUAL_EXCLUSIVE_OPTIONS = [
-  ['chukuidae2', 'chukuidae4'],
+  ['chukuidae1', 'chukuidae2', 'chukuidae4'],
   ['snapSpecialBundle', 'snapPremiumBundle'],
 ];
 
@@ -50,9 +50,9 @@ export function getOptionsTable(product, options = []) {
 
   if (product.category === 'chukuidae') {
     if (isBundle(product, options)) {
-      // 축의대 주 + 스냅 번들 → 축의대 옵션 + 웨딩 스냅 옵션 (chukuidae2/4 제외)
+      // 축의대 주 + 스냅 번들 → 축의대 옵션 + 웨딩 스냅 옵션 (chukuidae1/2/4 제외)
       const {
-        chukuidae2: _c2, chukuidae4: _c4, ...weddingWithoutBundle
+        chukuidae1: _c1, chukuidae2: _c2, chukuidae4: _c4, ...weddingWithoutBundle
       } = OPTIONS_WEDDING;
       return { ...OPTIONS_CHUKUIDAE, ...weddingWithoutBundle };
     }

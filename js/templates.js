@@ -176,6 +176,7 @@ const OPTION_LABEL = {
   part2Half: '2부 촬영(30분)',
   pyebaek: '폐백 촬영',
   vintageDigicam: '빈티지 디카',
+  chukuidae1: '축의대 1인 1팀 (번들)',
   chukuidae2: '축의대 2인 1팀 (번들)',
   chukuidae4: '축의대 4인 2팀 (번들)',
   readyBag: '레디백',
@@ -340,9 +341,10 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
   // 번들 파트너 판정: 주 상품이 스냅이면 파트너는 축의대, 반대도 동일
   const bundleOptionCode = formData.options.find(c =>
-    ['chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'].includes(c)
+    ['chukuidae1', 'chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'].includes(c)
   );
   const partnerProductCode = {
+    chukuidae1: 'chukuidaeBasic',
     chukuidae2: 'chukuidaeStd',
     chukuidae4: 'chukuidaePremium',
     snapSpecialBundle: 'special',
