@@ -185,10 +185,29 @@ export const OPTIONS_STUDIO_DOL = {
 
 // 축의대 전용 옵션
 // - 감사문자: 200명 이하 기준가. 초과분은 예식 후 후불 청구 (실제 발송 인원 기준 50명당 +10,000)
+// - snapSpecialBundle / snapPremiumBundle: 축의대 상품에 스냅을 번들로 얹는 옵션.
+//   amount는 상수 대신 pricing.js의 resolveOptionAmount()에서 주 상품(축의대 등급)에 따라 동적 계산.
 export const OPTIONS_CHUKUIDAE = {
   readyBag: { name: '레디백', amount: 10000 },
   offlineLedger: { name: '오프라인 장부 (양가 혼주용, 1팀 기준)', amount: 30000 },
   thankyouSMS: { name: '감사문자 발송 서비스 (200명 이하 기준 · 초과분 후불 청구)', amount: 30000 },
+  snapSpecialBundle: { name: '아이폰 스냅 스페셜 번들 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
+  snapPremiumBundle: { name: '아이폰 스냅 프리미엄 번들 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
+};
+
+// ============================
+// 번들 할인 (스냅 ⇄ 축의대 대칭성)
+// ============================
+// 스냅 상품 + 축의대 번들 옵션(chukuidae2/4) → OPTIONS_WEDDING의 amount로 이미 -70k/-120k 반영됨
+//   chukuidae2 = 450k(축의대 스탠다드) - 70k = 380k
+//   chukuidae4 = 800k(축의대 프리미엄) - 120k = 680k
+// 축의대 상품 + 스냅 번들 옵션(snapSpecial/Premium) → 같은 규칙으로 대칭 계산:
+//   snapSpecialBundle amount = 350k(스냅 스페셜) - BUNDLE_DISCOUNTS[주상품]
+//   snapPremiumBundle amount = 550k(스냅 프리미엄) - BUNDLE_DISCOUNTS[주상품]
+// 어느 쪽에서 시작하든 총액이 동일해집니다.
+export const BUNDLE_DISCOUNTS = {
+  chukuidaeStd: 70000,
+  chukuidaePremium: 120000,
 };
 
 // ============================
@@ -196,18 +215,19 @@ export const OPTIONS_CHUKUIDAE = {
 // ============================
 
 // 스냅 출장비
+// 'other'는 별도 문의 지역. 폼에서 사장님이 안내 금액을 입력할 수 있음 (customTravelFee).
 export const TRAVEL_FEE = {
   seoul: { name: '서울', amount: 0 },
   gyeonggi_incheon: { name: '경기·인천', amount: 50000 },
   pyeongtaek: { name: '평택', amount: 70000 },
-  other: { name: '그 외 지역', amount: null }, // null = 별도 문의
+  other: { name: '그 외 지역 (사장님 안내 금액 입력)', amount: null },
 };
 
 // 축의대 출장비 (경기 이외 지역은 별도 문의)
 export const TRAVEL_FEE_CHUKUIDAE = {
   seoul: { name: '서울', amount: 0 },
   gyeonggi_incheon: { name: '경기·인천', amount: 50000 },
-  other: { name: '경기 이외 지역', amount: null }, // null = 별도 문의
+  other: { name: '경기 이외 지역 (사장님 안내 금액 입력)', amount: null },
 };
 
 // ============================

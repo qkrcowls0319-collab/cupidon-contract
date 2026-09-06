@@ -15,6 +15,7 @@ export async function generateContractPDF(formData) {
     immediateDiscounts: formData.immediateDiscounts,
     promiseDiscounts: formData.promiseDiscounts,
     dolHasMainSnap: formData.dolHasMainSnap,
+    customTravelFee: formData.customTravelFee,
   });
   const today = new Date();
   const todayStr = `${today.getFullYear()}. ${String(today.getMonth() + 1).padStart(2, '0')}. ${String(today.getDate()).padStart(2, '0')}.`;
@@ -73,7 +74,9 @@ export async function generateContractPDF(formData) {
   const blob = pdf.output('blob');
   const base64 = pdf.output('datauristring').split(',')[1];
   const product = PRODUCTS[formData.product];
-  const prefix = product?.category === 'chukuidae' ? '큐피돈_축의대_계약서' : '큐피돈_계약서';
+  const prefix = quote.isBundle
+    ? '큐피돈_번들_계약서'
+    : product?.category === 'chukuidae' ? '큐피돈_축의대_계약서' : '큐피돈_계약서';
   const filename = `${prefix}_${PRODUCT_LABEL(formData.product)}_${sanitizeFilename(formData.customerName)}_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.pdf`;
 
   renderArea.innerHTML = '';
