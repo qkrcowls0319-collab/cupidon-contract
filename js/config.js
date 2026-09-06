@@ -215,6 +215,7 @@ export const OPTIONS_CHUKUIDAE = {
   readyBag: { name: '레디백', amount: 10000 },
   offlineLedger: { name: '오프라인 장부 (양가 혼주용, 1팀 기준)', amount: 30000 },
   thankyouSMS: { name: '감사문자 발송 서비스 (200명 이하 기준 · 초과분 후불 청구)', amount: 30000 },
+  extraManager: { name: '매니저 1인 추가', amount: 180000 },
   snapSpecialBundle: { name: '아이폰 스냅 스페셜 번들 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
   snapPremiumBundle: { name: '아이폰 스냅 프리미엄 번들 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
 };

@@ -182,6 +182,7 @@ const OPTION_LABEL = {
   readyBag: '레디백',
   offlineLedger: '오프라인 장부',
   thankyouSMS: '감사문자 발송',
+  extraManager: '매니저 1인 추가',
   snapSpecialBundle: '아이폰 스냅 스페셜 (번들)',
   snapPremiumBundle: '아이폰 스냅 프리미엄 (번들)',
 };
@@ -361,7 +362,7 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
   // 옵션들을 카테고리별로 분리
   const snapOwnCodes = ['finalPlus5', 'colorPlus10', 'part2', 'part2Half', 'pyebaek', 'vintageDigicam'];
-  const chukOwnCodes = ['readyBag', 'offlineLedger', 'thankyouSMS'];
+  const chukOwnCodes = ['readyBag', 'offlineLedger', 'thankyouSMS', 'extraManager'];
   const snapExtraLabels = formData.options
     .filter(c => snapOwnCodes.includes(c))
     .map(c => `${OPTION_LABEL[c] || c} → +${priceStr(optionAmount(mainProduct, c))}`);
