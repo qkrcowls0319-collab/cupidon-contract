@@ -11,6 +11,9 @@ import {
   getImmediateDiscounts,
   getPromiseDiscounts,
   getTravelFeeTable,
+  resolveOptionAmount,
+  isBundle,
+  MUTUAL_EXCLUSIVE_OPTIONS,
 } from './pricing.js';
 import { generateContractPDF, downloadBlob } from './pdf.js';
 
@@ -23,6 +26,7 @@ const DEFAULT_DATA = {
   eventTime: '',
   venue: '',
   region: '',
+  customTravelFee: '',  // region==='other' 일 때 사장님이 안내한 출장비 (원)
   product: '',
   options: [],
   dolHasMainSnap: null,
@@ -158,8 +162,21 @@ function attachCommonHandlers() {
       el.addEventListener('change', () => {
         if (Array.isArray(state.data[key])) {
           const val = el.value;
-          if (el.checked) state.data[key] = [...state.data[key], val];
-          else state.data[key] = state.data[key].filter(v => v !== val);
+          if (el.checked) {
+            state.data[key] = [...state.data[key], val];
+            // 번들 티어 상호배타 — 같은 그룹의 다른 옵션은 자동 해제
+            if (key === 'options') {
+              MUTUAL_EXCLUSIVE_OPTIONS.forEach(group => {
+                if (group.includes(val)) {
+                  state.data.options = state.data.options.filter(
+                    v => v === val || !group.includes(v)
+                  );
+                }
+              });
+            }
+          } else {
+            state.data[key] = state.data[key].filter(v => v !== val);
+          }
         } else {
           state.data[key] = el.checked;
         }
@@ -299,7 +316,17 @@ registerRenderer(2, s => {
         <label>출장지역 *</label>
         <div class="radio-group">${regions}</div>
         ${s.errors.region ? `<div class="error">${s.errors.region}</div>` : ''}
-        ${s.data.region === 'other' ? '<div class="info-box">출장비는 별도 문의 후 안내됩니다. 계약서 총액에는 포함되지 않습니다.</div>' : ''}
+        ${s.data.region === 'other' ? `
+          <div style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
+            <label style="display:block;margin-bottom:6px;font-weight:600">사장님 안내 출장비 (원)</label>
+            <input type="number" min="0" step="1000" data-bind="customTravelFee"
+                   value="${escapeAttr(String(s.data.customTravelFee || ''))}"
+                   placeholder="예: 100000" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px">
+            <div style="margin-top:6px;font-size:12px;color:#6B4E1E">
+              사장님이 안내한 금액을 입력하면 총액에 즉시 반영됩니다. 미입력 시 '별도 문의'로 처리 (총액 미포함).
+            </div>
+          </div>
+        ` : ''}
       </div>
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
@@ -392,17 +419,48 @@ registerRenderer(4, s => {
     return `<div class="card"><p>상품을 먼저 선택해주세요.</p><div class="actions"><button class="btn btn-secondary" data-action="prev">이전</button></div></div>`;
   }
   const product = PRODUCTS[s.data.product];
-  const optionsTable = getOptionsTable(product);
-  const options = Object.entries(optionsTable).map(([code, o]) => {
+  const optionsTable = getOptionsTable(product, s.data.options);
+  // 카테고리별로 옵션 분리 렌더 (본 상품 옵션 / 번들 상대편 옵션)
+  const bundleActive = isBundle(product, s.data.options);
+  const renderOpt = ([code, o]) => {
     const checked = s.data.options.includes(code) ? 'checked' : '';
     const cls = s.data.options.includes(code) ? 'selected' : '';
+    const amount = resolveOptionAmount(product, code);
     return `
       <label class="checkbox-option ${cls}">
         <input type="checkbox" data-bind="options" value="${code}" ${checked}>
         <span>${o.name}</span>
-        <span class="price">+${o.amount.toLocaleString('ko-KR')}원</span>
+        <span class="price">+${amount.toLocaleString('ko-KR')}원</span>
       </label>`;
-  }).join('');
+  };
+
+  // 옵션을 "본상품 옵션"과 "번들 상대편 옵션"으로 분리
+  const isChukuidaeOptCode = code => ['readyBag', 'offlineLedger', 'thankyouSMS'].includes(code);
+  const isSnapBundleCode = code => ['snapSpecialBundle', 'snapPremiumBundle'].includes(code);
+  const isChukuidaeBundleCode = code => ['chukuidae2', 'chukuidae4'].includes(code);
+
+  const entries = Object.entries(optionsTable);
+  let ownGroup, otherGroup, otherGroupTitle;
+  if (product.category === 'snap') {
+    // 스냅 본 옵션 = chukuidae2/4 포함 (번들 트리거); 번들 활성 시 축의대 순수 옵션 별도 그룹
+    ownGroup = entries.filter(([c]) => !isChukuidaeOptCode(c));
+    otherGroup = entries.filter(([c]) => isChukuidaeOptCode(c));
+    otherGroupTitle = '축의대 추가 옵션 (번들 시)';
+  } else {
+    // 축의대 본 옵션 = readyBag/offlineLedger/thankyouSMS + snap 번들 트리거
+    ownGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeBundleCode(c) || isSnapBundleCode(c));
+    otherGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeOptCode(c));
+    otherGroupTitle = '스냅 추가 옵션 (번들 시)';
+  }
+
+  const ownHtml = ownGroup.map(renderOpt).join('');
+  const otherHtml = bundleActive && otherGroup.length
+    ? `<h3 style="margin-top:16px">${otherGroupTitle}</h3><div class="checkbox-group">${otherGroup.map(renderOpt).join('')}</div>`
+    : '';
+
+  const bundleNote = bundleActive
+    ? '<div class="info-box" style="margin-top:12px">✨ 스냅 ⇄ 축의대 번들 조합이 적용됩니다. 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</div>'
+    : '';
 
   // 돌스냅 아이폰 단독 여부 (돌스냅에만 노출)
   let dolQuestion = '';
@@ -432,7 +490,9 @@ registerRenderer(4, s => {
     <div class="card">
       <h2>4. 추가 옵션</h2>
       <h3>선택 옵션</h3>
-      <div class="checkbox-group">${options}</div>
+      <div class="checkbox-group">${ownHtml}</div>
+      ${otherHtml}
+      ${bundleNote}
       ${dolQuestion}
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
@@ -447,8 +507,8 @@ registerRenderer(4, s => {
 // ============================
 registerRenderer(5, s => {
   const product = PRODUCTS[s.data.product];
-  const immediateTable = getImmediateDiscounts(product);
-  const promiseTable = getPromiseDiscounts(product);
+  const immediateTable = getImmediateDiscounts(product, s.data.options);
+  const promiseTable = getPromiseDiscounts(product, s.data.options);
 
   const immediate = Object.entries(immediateTable).map(([code, d]) => {
     if (d.appliesTo && d.appliesTo !== 'all' && !d.appliesTo.includes(s.data.product)) return '';
@@ -511,17 +571,19 @@ registerRenderer(6, s => {
     immediateDiscounts: s.data.immediateDiscounts,
     promiseDiscounts: s.data.promiseDiscounts,
     dolHasMainSnap: s.data.dolHasMainSnap,
+    customTravelFee: s.data.customTravelFee,
   });
   const p = n => n.toLocaleString('ko-KR') + '원';
   const product = PRODUCTS[s.data.product];
-  const optionsTable = getOptionsTable(product);
-  const immediateTable = getImmediateDiscounts(product);
-  const promiseTable = getPromiseDiscounts(product);
+  const optionsTable = getOptionsTable(product, s.data.options);
+  const immediateTable = getImmediateDiscounts(product, s.data.options);
+  const promiseTable = getPromiseDiscounts(product, s.data.options);
 
   const optionLines = s.data.options.map(code => {
     const o = optionsTable[code];
     if (!o) return '';
-    return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(o.amount)}</span></div>`;
+    const amt = resolveOptionAmount(product, code);
+    return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(amt)}</span></div>`;
   }).join('');
 
   const immediateLines = s.data.immediateDiscounts.map(code => {
@@ -537,10 +599,11 @@ registerRenderer(6, s => {
     return `<div class="quote-line promise-line"><span>${d.name} <span class="badge-warn">약속</span></span><span>${p(d.amount)}</span></div>`;
   }).join('');
 
+  const travelLabel = s.data.region === 'other' ? '출장비 (사장님 안내)' : '출장비';
   const travelLine = quote.travelFee === null
     ? '<div class="quote-line"><span>출장비</span><span class="badge-warn">별도 문의</span></div>'
     : quote.travelFee > 0
-      ? `<div class="quote-line"><span>출장비</span><span>+${p(quote.travelFee)}</span></div>`
+      ? `<div class="quote-line"><span>${travelLabel}</span><span>+${p(quote.travelFee)}</span></div>`
       : '';
 
   const dolLine = quote.dolSurcharge > 0
@@ -646,6 +709,7 @@ function _computeQuote(s) {
     immediateDiscounts: s.data.immediateDiscounts,
     promiseDiscounts: s.data.promiseDiscounts,
     dolHasMainSnap: s.data.dolHasMainSnap,
+    customTravelFee: s.data.customTravelFee,
   });
 }
 
@@ -840,10 +904,10 @@ function buildKakaoMessage() {
   const d = state.data;
   const product = PRODUCTS[d.product];
   const productName = product?.name || '';
-  const optionsTable = getOptionsTable(product);
-  const immediateTable = getImmediateDiscounts(product);
-  const promiseTable = getPromiseDiscounts(product);
-  const travelTable = getTravelFeeTable(product);
+  const optionsTable = getOptionsTable(product, d.options);
+  const immediateTable = getImmediateDiscounts(product, d.options);
+  const promiseTable = getPromiseDiscounts(product, d.options);
+  const travelTable = getTravelFeeTable(product, d.options);
   const p = n => n.toLocaleString('ko-KR');
 
   const quote = calculateQuote({
@@ -853,10 +917,13 @@ function buildKakaoMessage() {
     immediateDiscounts: d.immediateDiscounts,
     promiseDiscounts: d.promiseDiscounts,
     dolHasMainSnap: d.dolHasMainSnap,
+    customTravelFee: d.customTravelFee,
   });
 
   const regionLabel = travelTable[d.region]?.name || TRAVEL_FEE[d.region]?.name || d.region;
-  const categoryLabel = product?.category === 'chukuidae' ? '축의대' : '스냅';
+  const categoryLabel = quote.isBundle
+    ? '스냅+축의대 번들'
+    : product?.category === 'chukuidae' ? '축의대' : '스냅';
 
   // 상품 + 옵션 (인라인)
   const optionText = d.options.length
@@ -890,7 +957,9 @@ function buildKakaoMessage() {
 
   const travelHint = quote.travelFee === null
     ? ' (출장비 별도)'
-    : quote.travelFee > 0 ? ` (출장비 +${p(quote.travelFee)})` : '';
+    : quote.travelFee > 0
+      ? ` (출장비${d.region === 'other' ? ' · 사장님 안내' : ''} +${p(quote.travelFee)})`
+      : '';
 
   return `[큐피돈 ${categoryLabel} 계약 신청]
 
@@ -951,10 +1020,10 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
   const categoryKey = product?.category === 'chukuidae' ? 'chukuidae' : 'snap';
   const webhookUrl = SHEETS_WEBHOOK_URLS[categoryKey];
   if (!webhookUrl) return; // 해당 카테고리 웹훅이 세팅 안 됐으면 스킵
-  const optionsTable = getOptionsTable(product);
-  const immediateTable = getImmediateDiscounts(product);
-  const promiseTable = getPromiseDiscounts(product);
-  const travelTable = getTravelFeeTable(product);
+  const optionsTable = getOptionsTable(product, data.options);
+  const immediateTable = getImmediateDiscounts(product, data.options);
+  const promiseTable = getPromiseDiscounts(product, data.options);
+  const travelTable = getTravelFeeTable(product, data.options);
   const optionNames = data.options.map(c => optionsTable[c]?.name).filter(Boolean).join(', ');
   const immediateNames = data.immediateDiscounts.map(c => {
     if (c === 'partner' && data.partnerCode) return `짝꿍[${data.partnerCode}]`;
@@ -971,18 +1040,23 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
     eventTime: data.eventTime,
     venue: data.venue,
     region: travelTable[data.region]?.name || TRAVEL_FEE[data.region]?.name || data.region,
-    category: product?.category === 'chukuidae' ? '축의대' : '스냅',
+    customTravelFee: data.region === 'other' && data.customTravelFee ? Number(data.customTravelFee) : '',
+    category: quote.isBundle
+      ? '스냅+축의대 번들'
+      : (product?.category === 'chukuidae' ? '축의대' : '스냅'),
     product: product?.name || data.product,
     options: optionNames,
     dolAloneSurcharge: data.product === 'dol' && data.dolHasMainSnap === false ? '적용(+50,000)' : '',
     immediateDiscounts: immediateNames,
     promiseDiscounts: promiseNames,
     partnerCode: data.partnerCode || '',
+    travelFee: quote.travelFee !== null ? quote.travelFee : '별도 문의',
     total: quote.total,
     deposit: quote.deposit,
     balance: quote.balance,
     balanceAfterReviews: quote.balanceAfterReviews,
     isQuoteFinal: quote.isQuoteFinal,
+    isBundle: quote.isBundle,
     pdfBase64: pdfBase64 || '',
     pdfFilename: pdfFilename || '',
   };
