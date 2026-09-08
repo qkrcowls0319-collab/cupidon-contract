@@ -63,8 +63,11 @@ function renderContractHTML_snap({ formData, quote, todayStr }) {
     ? `<img src="${formData.signature}" alt="서명" style="height:44px;display:block;margin-top:2px">`
     : '<div style="height:44px;border-bottom:1px solid #666;width:180px"></div>';
 
+  const travelLabel = formData.region === 'other' ? ' (사장님 안내)' : '';
   const travelNote = quote.isQuoteFinal
-    ? ''
+    ? (quote.travelFee > 0
+        ? `<div style="font-size:10px;color:#555;margin-top:2px">출장비${travelLabel}: ${priceStr(quote.travelFee)} 포함</div>`
+        : '')
     : '<div style="color:#c00;font-size:10px;margin-top:2px"><b>*출장비는 별도 문의 후 안내 (본 금액에 미포함)</b></div>';
 
   // font-family를 모든 요소에 명시적으로 적용 (숫자 폰트 깨짐 방지)
@@ -233,8 +236,11 @@ function renderContractHTML_chukuidae({ formData, quote, todayStr }) {
     ? `<img src="${formData.signature}" alt="서명" style="height:44px;display:block;margin-top:2px">`
     : '<div style="height:44px;border-bottom:1px solid #666;width:180px"></div>';
 
+  const travelLabel = formData.region === 'other' ? ' (사장님 안내)' : '';
   const travelNote = quote.isQuoteFinal
-    ? ''
+    ? (quote.travelFee > 0
+        ? `<div style="font-size:10px;color:#555;margin-top:2px">출장비${travelLabel}: ${priceStr(quote.travelFee)} 포함</div>`
+        : '')
     : '<div style="color:#c00;font-size:10px;margin-top:2px"><b>*출장비는 경기 이외 지역 별도 문의 (본 금액에 미포함)</b></div>';
 
   const FONT = "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif";
