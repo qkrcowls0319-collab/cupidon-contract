@@ -318,12 +318,12 @@ registerRenderer(2, s => {
         ${s.errors.region ? `<div class="error">${s.errors.region}</div>` : ''}
         ${s.data.region === 'other' ? `
           <div style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
-            <label style="display:block;margin-bottom:6px;font-weight:600">사장님 안내 출장비 (원)</label>
+            <label style="display:block;margin-bottom:6px;font-weight:600">사장님이 안내한 출장비 금액을 입력해주세요 (원)</label>
             <input type="number" min="0" step="1000" data-bind="customTravelFee"
                    value="${escapeAttr(String(s.data.customTravelFee || ''))}"
                    placeholder="예: 100000" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px">
             <div style="margin-top:6px;font-size:12px;color:#6B4E1E">
-              사장님이 안내한 금액을 입력하면 총액에 즉시 반영됩니다. 미입력 시 '별도 문의'로 처리 (총액 미포함).
+              카카오톡 채널을 통해 사장님이 안내드린 금액을 입력하시면 총액에 즉시 반영됩니다. 미입력 시 '별도 문의'로 처리됩니다 (총액 미포함).
             </div>
           </div>
         ` : ''}
