@@ -86,7 +86,7 @@ export async function generateContractPDF(formData) {
 
 function PRODUCT_LABEL(code) {
   return {
-    special: '스페셜', premium: '프리미엄', studio: '스튜디오', dol: '돌스냅',
+    special: '스페셜', premium: '프리미엄', studio: '스튜디오', dol: '돌스냅', dolMain: '돌메인스냅',
     chukuidaeBasic: '베이직', chukuidaeStd: '스탠다드', chukuidaePremium: '프리미엄',
   }[code] || code;
 }

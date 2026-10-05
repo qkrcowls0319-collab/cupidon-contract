@@ -30,6 +30,8 @@ function renderContractHTML_snap({ formData, quote, todayStr }) {
   const product = PRODUCTS[formData.product];
   const appliedImmediate = formData.immediateDiscounts.map(c => IMMEDIATE_DISCOUNTS[c].name);
   const subtitleLabel = appliedImmediate.length ? `(${appliedImmediate.join(', ')})` : '';
+  const contractTitle = product.cameraType === 'dslr' ? '큐피돈 메인스냅 계약서' : '큐피돈 아이폰 스냅 계약서';
+  const agreementLead = product.cameraType === 'dslr' ? '큐피돈 메인스냅' : '큐피돈 아이폰 스냅';
 
   const eventDateStr = formatEventDate(formData.eventDate, formData.eventTime);
   const priceStr = n => n.toLocaleString('ko-KR') + '원';
@@ -78,7 +80,7 @@ function renderContractHTML_snap({ formData, quote, todayStr }) {
 
       <!-- 헤더 -->
       <div style="text-align:center;margin-bottom:14px">
-        <h1 style="font-family:${FONT};font-size:20px;margin:0;font-weight:700;letter-spacing:0.02em">큐피돈 아이폰 스냅 계약서</h1>
+        <h1 style="font-family:${FONT};font-size:20px;margin:0;font-weight:700;letter-spacing:0.02em">${contractTitle}</h1>
         <div style="font-family:${FONT};color:#555;font-size:11px;margin-top:3px">${subtitleLabel}</div>
       </div>
 
@@ -126,7 +128,7 @@ function renderContractHTML_snap({ formData, quote, todayStr }) {
 
       <!-- 동의문 -->
       <div style="font-family:${FONT};margin:10px 0;font-size:10.5px;line-height:1.6">
-        큐피돈 아이폰 스냅과 관련하여 상기 내용을 통해 촬영 상품 구성, 추가 요금, 결제 및 환불,
+        ${agreementLead}과 관련하여 상기 내용을 통해 촬영 상품 구성, 추가 요금, 결제 및 환불,
         데이터 보관 및 전달 규정에 대해 충분히 안내받았으며, 이에 동의합니다.
       </div>
 
