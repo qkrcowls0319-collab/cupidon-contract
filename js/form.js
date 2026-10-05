@@ -388,7 +388,8 @@ registerRenderer(3, s => {
       </label>`;
   };
 
-  const snapProducts = Object.values(PRODUCTS).filter(p => p.category === 'snap').map(renderCard).join('');
+  const iPhoneSnapProducts = Object.values(PRODUCTS).filter(p => p.category === 'snap' && p.cameraType !== 'dslr').map(renderCard).join('');
+  const mainSnapProducts = Object.values(PRODUCTS).filter(p => p.category === 'snap' && p.cameraType === 'dslr').map(renderCard).join('');
   const chukuidaeProducts = Object.values(PRODUCTS).filter(p => p.category === 'chukuidae').map(renderCard).join('');
 
   return `
@@ -396,7 +397,10 @@ registerRenderer(3, s => {
       <h2>3. 상품 선택</h2>
       <div class="field ${s.errors.product ? 'has-error' : ''}">
         <h3 style="margin-top:8px">📸 아이폰 스냅</h3>
-        <div class="radio-group">${snapProducts}</div>
+        <div class="radio-group">${iPhoneSnapProducts}</div>
+
+        <h3 style="margin-top:20px">📷 메인스냅 (DSLR)</h3>
+        <div class="radio-group">${mainSnapProducts}</div>
 
         <h3 style="margin-top:20px">🎀 큐피돈 × 더체크 축의대</h3>
         <div class="radio-group">${chukuidaeProducts}</div>
