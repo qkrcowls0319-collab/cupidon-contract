@@ -137,25 +137,30 @@ function doPost(e) {
 }
 
 // 짝꿍코드 사용 횟수 조회 (프론트의 Step 5 blur 시 호출)
+// 매칭: 뒤쪽 숫자만 추출해서 비교 (영문/대소문자/공백 무시)
 function doGet(e) {
   if (e.parameter.action === 'checkPartner') {
-    const code = String(e.parameter.code || '').trim().toUpperCase();
-    if (!code) return jsonResp({ error: 'no code' });
+    const codeDigits = extractDigits(e.parameter.code);
+    if (!codeDigits) return jsonResp({ error: 'no digits in code' });
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return jsonResp({ code, usedCount: 0, status: 'valid', remaining: 2 });
+    if (data.length < 2) return jsonResp({ code: e.parameter.code, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
     const idx = data[0].indexOf('짝꿍코드');
     if (idx === -1) return jsonResp({ error: "'짝꿍코드' 컬럼이 없습니다" });
     const usedCount = data.slice(1).filter(r =>
-      String(r[idx] || '').trim().toUpperCase() === code
+      extractDigits(r[idx]) === codeDigits
     ).length;
     return jsonResp({
-      code, usedCount,
+      code: e.parameter.code, codeDigits, usedCount,
       status: usedCount >= 2 ? 'expired' : 'valid',
       remaining: Math.max(0, 2 - usedCount),
     });
   }
   return jsonResp({ error: 'unknown action' });
+}
+function extractDigits(raw) {
+  const m = String(raw || '').trim().match(/(\d+)\s*$/);
+  return m ? m[1] : '';
 }
 function jsonResp(o) {
   return ContentService.createTextOutput(JSON.stringify(o))

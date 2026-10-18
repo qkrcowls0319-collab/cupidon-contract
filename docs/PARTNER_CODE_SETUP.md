@@ -35,8 +35,10 @@ function doGet(e) {
 }
 
 function checkPartnerCode(rawCode) {
-  const code = String(rawCode || '').trim().toUpperCase();
-  if (!code) return jsonResponse({ error: 'no code' });
+  // 뒤쪽 숫자만 추출해서 매칭 (영문/대소문자/공백 무시)
+  // 예: 'KHR2026' → '2026', 'cpab123456' → '123456', '2026' → '2026'
+  const codeDigits = extractDigits(rawCode);
+  if (!codeDigits) return jsonResponse({ error: 'no digits in code' });
 
   // ⚠ 시트 이름이 다르면 이 부분을 바꿔주세요 (예: '즉시할인', '신청이력' 등)
   const SHEET_NAME = '스냅';
@@ -46,7 +48,7 @@ function checkPartnerCode(rawCode) {
 
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) {
-    return jsonResponse({ code, usedCount: 0, status: 'valid', remaining: 2 });
+    return jsonResponse({ code: rawCode, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
   }
 
   const header = data[0];
@@ -57,15 +59,22 @@ function checkPartnerCode(rawCode) {
   }
 
   const usedCount = data.slice(1).filter(function(row) {
-    return String(row[idx] || '').trim().toUpperCase() === code;
+    return extractDigits(row[idx]) === codeDigits;
   }).length;
 
   return jsonResponse({
-    code: code,
-    usedCount: usedCount,
+    code: rawCode,
+    codeDigits,
+    usedCount,
     status: usedCount >= 2 ? 'expired' : 'valid',
     remaining: Math.max(0, 2 - usedCount),
   });
+}
+
+// 뒤쪽 연속 숫자 그룹만 추출 ('KHR2026 ' → '2026')
+function extractDigits(raw) {
+  const m = String(raw || '').trim().match(/(\d+)\s*$/);
+  return m ? m[1] : '';
 }
 
 function jsonResponse(obj) {
