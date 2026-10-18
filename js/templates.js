@@ -9,7 +9,7 @@ import {
   OWNER_INFO,
   FIXED_DEPOSIT,
 } from './config.js';
-import { isBundle, resolveOptionAmount } from './pricing.js';
+import { isBundle, resolveOptionAmount, getPackageDiscount } from './pricing.js';
 
 /**
  * 계약서 HTML 렌더러 — 카테고리/번들별 분기 진입점.
@@ -377,7 +377,9 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
   // 패키지 할인가 라인 (주 상품에서 파트너 상품을 옵션으로 얹은 형태)
   const bundleLineAmount = optionAmount(mainProduct, bundleOptionCode);
-  const bundlePartnerLine = `${partnerProduct.name} (패키지 할인가) → +${priceStr(bundleLineAmount)}`;
+  const packageDiscountAmount = getPackageDiscount(mainProduct, bundleOptionCode);
+  const partnerBasePrice = partnerProduct.basePrice;
+  const bundlePartnerLine = `${partnerProduct.name} 정가 ${priceStr(partnerBasePrice)}<br>→ <b>패키지가 ${priceStr(bundleLineAmount)}</b> <span style="color:#8a5a1a">(-${priceStr(packageDiscountAmount)} 할인)</span>`;
 
   // 데이터 전달 · 서비스 진행 안내 (양쪽 노트 병합)
   const snapDelivery = snapProduct.deliveryNote.map(t => `<li style="margin:2px 0">${t}</li>`).join('');
@@ -481,6 +483,7 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
           <span>잔금: ${priceStr(quote.balance)}</span>
           <span>총액: ${priceStr(quote.total)}</span>
         </div>
+        <div style="font-family:${FONT};margin-top:3px;font-size:10px;color:#8a5a1a"><b>💰 패키지 할인:</b> -${priceStr(packageDiscountAmount)} (스냅 ${snapProduct.name} 정가의 20% 할인 적용)</div>
         ${travelNote}
         ${promiseSection}
         <div style="font-family:${FONT};margin-top:4px;font-size:10px"><b>용역 공급자:</b> 큐피돈 스냅 (스냅 × 더체크 축의대 패키지)</div>

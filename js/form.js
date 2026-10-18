@@ -12,6 +12,7 @@ import {
   getPromiseDiscounts,
   getTravelFeeTable,
   resolveOptionAmount,
+  getPackageDiscount,
   isBundle,
   MUTUAL_EXCLUSIVE_OPTIONS,
 } from './pricing.js';
@@ -426,14 +427,23 @@ registerRenderer(4, s => {
   const optionsTable = getOptionsTable(product, s.data.options);
   // 카테고리별로 옵션 분리 렌더 (본 상품 옵션 / 번들 상대편 옵션)
   const bundleActive = isBundle(product, s.data.options);
+  const PACKAGE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'];
   const renderOpt = ([code, o]) => {
     const checked = s.data.options.includes(code) ? 'checked' : '';
     const cls = s.data.options.includes(code) ? 'selected' : '';
     const amount = resolveOptionAmount(product, code);
+    const isPackage = PACKAGE_CODES.includes(code);
+    const packageDiscount = isPackage ? getPackageDiscount(product, code) : 0;
+    const packageBadge = packageDiscount > 0
+      ? `<div style="margin-top:4px;display:inline-block;padding:3px 8px;background:#F9EBD4;color:#8a5a1a;border-radius:4px;font-size:11.5px;font-weight:600">💰 패키지 할인 -${packageDiscount.toLocaleString('ko-KR')}원 적용</div>`
+      : '';
     return `
-      <label class="checkbox-option ${cls}">
+      <label class="checkbox-option ${cls}" ${isPackage ? 'style="border-color:#D4A96E"' : ''}>
         <input type="checkbox" data-bind="options" value="${code}" ${checked}>
-        <span>${o.name}</span>
+        <div style="flex:1">
+          <div>${o.name}</div>
+          ${packageBadge}
+        </div>
         <span class="price">+${amount.toLocaleString('ko-KR')}원</span>
       </label>`;
   };
@@ -462,8 +472,17 @@ registerRenderer(4, s => {
     ? `<h3 style="margin-top:16px">${otherGroupTitle}</h3><div class="checkbox-group">${otherGroup.map(renderOpt).join('')}</div>`
     : '';
 
+  // 선택된 패키지 옵션의 총 할인액 (하이라이트 표시용)
+  const activePackageSaving = bundleActive
+    ? s.data.options
+        .filter(c => PACKAGE_CODES.includes(c))
+        .reduce((sum, c) => sum + getPackageDiscount(product, c), 0)
+    : 0;
   const bundleNote = bundleActive
-    ? '<div class="info-box" style="margin-top:12px">✨ 스냅 ⇄ 축의대 패키지 할인이 적용됩니다. 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</div>'
+    ? `<div class="info-box" style="margin-top:12px;background:#F4E4C9;border-left-color:#B89968;color:#5A3B1A">
+         ✨ <strong>패키지 할인 적용! 총 ${activePackageSaving.toLocaleString('ko-KR')}원 할인</strong>되었습니다.<br>
+         <span style="font-size:12px;color:#7A5A2E">스냅 ⇄ 축의대 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</span>
+       </div>`
     : '';
 
   // 돌스냅 아이폰 단독 여부 (돌스냅에만 노출)
@@ -590,12 +609,25 @@ registerRenderer(6, s => {
   const immediateTable = getImmediateDiscounts(product, s.data.options);
   const promiseTable = getPromiseDiscounts(product, s.data.options);
 
+  const PACKAGE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'];
   const optionLines = s.data.options.map(code => {
     const o = optionsTable[code];
     if (!o) return '';
     const amt = resolveOptionAmount(product, code);
+    if (PACKAGE_CODES.includes(code)) {
+      const pkgDisc = getPackageDiscount(product, code);
+      return `<div class="quote-line" style="color:#8a5a1a"><span>+ ${o.name} <small style="font-weight:600">· 💰 패키지 -${p(pkgDisc)}</small></span><span>+${p(amt)}</span></div>`;
+    }
     return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(amt)}</span></div>`;
   }).join('');
+
+  // 총 패키지 할인액 (강조 라인용)
+  const totalPackageSaving = s.data.options
+    .filter(c => PACKAGE_CODES.includes(c))
+    .reduce((sum, c) => sum + getPackageDiscount(product, c), 0);
+  const packageSavingBanner = totalPackageSaving > 0
+    ? `<div class="quote-line" style="color:#8a5a1a;font-weight:700;background:#F9EBD4;padding:6px 8px;border-radius:4px;margin:4px 0"><span>✨ 패키지 할인 혜택</span><span>-${p(totalPackageSaving)}</span></div>`
+    : '';
 
   const immediateLines = s.data.immediateDiscounts.map(code => {
     const d = immediateTable[code];
@@ -634,6 +666,7 @@ registerRenderer(6, s => {
         <div class="quote-line"><span>${product.name}</span><span>${p(quote.subtotal)}</span></div>
         ${travelLine}
         ${optionLines}
+        ${packageSavingBanner}
         ${dolLine}
         ${immediateLines}
         <div class="quote-line total"><span>총액</span><span>${p(quote.total)}</span></div>

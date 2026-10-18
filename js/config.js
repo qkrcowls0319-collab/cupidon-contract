@@ -218,9 +218,9 @@ export const OPTIONS_WEDDING = {
   part2: { name: '2부 촬영 추가', amount: 70000 },
   pyebaek: { name: '폐백 촬영 추가', amount: 50000 },
   vintageDigicam: { name: '빈티지 디카', amount: 50000 },
-  chukuidae1: { name: '축의대 1인 1팀 (베이직 · 패키지 할인가 5%↓)', amount: 332500 },
-  chukuidae2: { name: '축의대 2인 1팀 (스탠다드 · 패키지 할인가 5%↓)', amount: 427500 },
-  chukuidae4: { name: '축의대 4인 2팀 (프리미엄 · 패키지 할인가 5%↓)', amount: 760000 },
+  chukuidae1: { name: '축의대 1인 1팀 (베이직)', dynamic: 'chukuidaeBundle', chukCode: 'chukuidaeBasic' },
+  chukuidae2: { name: '축의대 2인 1팀 (스탠다드)', dynamic: 'chukuidaeBundle', chukCode: 'chukuidaeStd' },
+  chukuidae4: { name: '축의대 4인 2팀 (프리미엄)', dynamic: 'chukuidaeBundle', chukCode: 'chukuidaePremium' },
 };
 
 // 스냅 - 스튜디오·돌
@@ -237,24 +237,21 @@ export const OPTIONS_CHUKUIDAE = {
   readyBag: { name: '레디백', amount: 10000 },
   offlineLedger: { name: '오프라인 장부 (양가 혼주용, 1팀 기준)', amount: 30000 },
   extraManager: { name: '매니저 1인 추가', amount: 180000 },
-  snapSpecialBundle: { name: '아이폰 스냅 스페셜 패키지 할인 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
-  snapPremiumBundle: { name: '아이폰 스냅 프리미엄 패키지 할인 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
+  snapSpecialBundle: { name: '아이폰 스냅 스페셜 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
+  snapPremiumBundle: { name: '아이폰 스냅 프리미엄 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
 };
 
 // ============================
 // 패키지 할인 (스냅 ⇄ 축의대 대칭성)
 // ============================
-// 스냅 상품 + 축의대 패키지 옵션(chukuidae1/2/4) → OPTIONS_WEDDING의 amount로 반영
-// 축의대 상품 + 스냅 패키지 옵션(snapSpecial/Premium) → 같은 규칙으로 대칭 계산:
-//   snapSpecialBundle amount = 350k(스냅 스페셜) - BUNDLE_DISCOUNTS[주상품]
-//   snapPremiumBundle amount = 550k(스냅 프리미엄) - BUNDLE_DISCOUNTS[주상품]
-// 어느 쪽에서 시작하든 총액이 동일해집니다.
-// 패키지 할인 = 축의대 정가의 5% (대칭 통일)
-export const BUNDLE_DISCOUNTS = {
-  chukuidaeBasic: 17500,   // 350k × 5%
-  chukuidaeStd: 22500,     // 450k × 5%
-  chukuidaePremium: 40000, // 800k × 5%
-};
+// 규칙: 패키지 할인액 = 스냅 상품 정가의 20%
+//   - 스냅 스페셜(350k) 패키지 → -70,000원 할인
+//   - 스냅 프리미엄(550k) 패키지 → -110,000원 할인
+// 할인액은 축의대 등급과 무관하게 "주 스냅" 또는 "얹힌 스냅"의 등급으로만 결정됨.
+// 양방향 대칭 유지: 어느 쪽에서 시작해도 최종 총액 동일.
+//   예) 스냅 스페셜(주) + 축의대 베이직 패키지 → 350k + (350k - 70k) = 630k
+//      축의대 베이직(주) + 스냅 스페셜 패키지 → 350k + (350k - 70k) = 630k
+export const PACKAGE_DISCOUNT_RATE = 0.20;
 
 // ============================
 // 출장비
