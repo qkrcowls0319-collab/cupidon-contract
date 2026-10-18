@@ -11,8 +11,30 @@ import {
   TRAVEL_FEE_CHUKUIDAE,
   DOL_ALONE_SURCHARGE,
   FIXED_DEPOSIT,
-  BUNDLE_DISCOUNTS,
+  PACKAGE_DISCOUNT_RATE,
 } from './config.js';
+
+export { PACKAGE_DISCOUNT_RATE };
+
+// 패키지 할인액: 스냅 상품 정가 × 20%
+function packageDiscountForSnap(snapCode) {
+  const snap = PRODUCTS[snapCode];
+  if (!snap) return 0;
+  return Math.round(snap.basePrice * PACKAGE_DISCOUNT_RATE);
+}
+
+// 패키지 할인 적용 시 "할인 금액" 반환 (고객 노출 · 뱃지용)
+// 어느 방향에서 선택했든 "함께 묶인 스냅 등급" 기준으로 금액 결정.
+export function getPackageDiscount(product, code) {
+  // 축의대 주 + 스냅 패키지
+  if (code === 'snapSpecialBundle') return packageDiscountForSnap('special');
+  if (code === 'snapPremiumBundle') return packageDiscountForSnap('premium');
+  // 스냅 주 + 축의대 패키지 → 주 스냅 등급으로 할인 결정
+  if (['chukuidae1', 'chukuidae2', 'chukuidae4'].includes(code)) {
+    return packageDiscountForSnap(product?.code);
+  }
+  return 0;
+}
 
 // 번들 옵션 코드 — 상대 카테고리 상품을 옵션으로 얹는 코드들
 const SNAP_TO_CHUKUIDAE_BUNDLE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4'];
@@ -96,18 +118,33 @@ export function getTravelFeeTable(product, options = []) {
 
 /**
  * 특정 옵션의 실제 금액 계산.
- * 스냅 번들 옵션(snapSpecialBundle/snapPremiumBundle)은 주 상품(축의대 등급)에 따라 동적:
- *   snapSpecialBundle = 350k(스페셜 정가) - BUNDLE_DISCOUNTS[주상품]
- *   snapPremiumBundle = 550k(프리미엄 정가) - BUNDLE_DISCOUNTS[주상품]
+ * 패키지 할인 옵션은 "함께 묶인 스냅 등급의 20%"만큼 할인:
+ *   - 축의대 주 + snapSpecialBundle = 350k - 70k = 280k
+ *   - 축의대 주 + snapPremiumBundle = 550k - 110k = 440k
+ *   - 스냅 주(special) + chukuidae1/2/4 = 축의대 정가 - 70k
+ *   - 스냅 주(premium) + chukuidae1/2/4 = 축의대 정가 - 110k
  */
+const CHUK_BUNDLE_MAP = {
+  chukuidae1: 'chukuidaeBasic',
+  chukuidae2: 'chukuidaeStd',
+  chukuidae4: 'chukuidaePremium',
+};
+
 export function resolveOptionAmount(product, code) {
+  // 축의대 주 + 스냅 패키지
   if (code === 'snapSpecialBundle') {
-    return PRODUCTS.special.basePrice - (BUNDLE_DISCOUNTS[product?.code] || 0);
+    return PRODUCTS.special.basePrice - packageDiscountForSnap('special');
   }
   if (code === 'snapPremiumBundle') {
-    return PRODUCTS.premium.basePrice - (BUNDLE_DISCOUNTS[product?.code] || 0);
+    return PRODUCTS.premium.basePrice - packageDiscountForSnap('premium');
   }
-  // 모든 옵션 테이블 후보에서 amount lookup (번들 컨텍스트 소실 방지)
+  // 스냅 주 + 축의대 패키지 (주 스냅 등급 기준 할인)
+  if (CHUK_BUNDLE_MAP[code]) {
+    const chuk = PRODUCTS[CHUK_BUNDLE_MAP[code]];
+    const discount = packageDiscountForSnap(product?.code);
+    return chuk.basePrice - discount;
+  }
+  // 모든 옵션 테이블 후보에서 amount lookup
   const candidates = [OPTIONS_WEDDING, OPTIONS_STUDIO_DOL, OPTIONS_CHUKUIDAE];
   for (const table of candidates) {
     if (table[code] && typeof table[code].amount === 'number') return table[code].amount;
