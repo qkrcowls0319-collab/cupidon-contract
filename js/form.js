@@ -425,63 +425,114 @@ registerRenderer(4, s => {
   }
   const product = PRODUCTS[s.data.product];
   const optionsTable = getOptionsTable(product, s.data.options);
-  // 카테고리별로 옵션 분리 렌더 (본 상품 옵션 / 번들 상대편 옵션)
   const bundleActive = isBundle(product, s.data.options);
   const PACKAGE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'];
-  const renderOpt = ([code, o]) => {
+  const isPackageCode = c => PACKAGE_CODES.includes(c);
+  // 패키지 옵션의 "할인 전 정가" (취소선용) — 해당 옵션이 가리키는 실제 상품의 basePrice
+  const PACKAGE_BASE_LOOKUP = {
+    chukuidae1: PRODUCTS.chukuidaeBasic.basePrice,
+    chukuidae2: PRODUCTS.chukuidaeStd.basePrice,
+    chukuidae4: PRODUCTS.chukuidaePremium.basePrice,
+    snapSpecialBundle: PRODUCTS.special.basePrice,
+    snapPremiumBundle: PRODUCTS.premium.basePrice,
+  };
+
+  // 일반 옵션 (패키지 아님) 렌더
+  const renderRegularOpt = ([code, o]) => {
     const checked = s.data.options.includes(code) ? 'checked' : '';
     const cls = s.data.options.includes(code) ? 'selected' : '';
     const amount = resolveOptionAmount(product, code);
-    const isPackage = PACKAGE_CODES.includes(code);
-    const packageDiscount = isPackage ? getPackageDiscount(product, code) : 0;
-    const packageBadge = packageDiscount > 0
-      ? `<div style="margin-top:4px;display:inline-block;padding:3px 8px;background:#F9EBD4;color:#8a5a1a;border-radius:4px;font-size:11.5px;font-weight:600">💰 패키지 할인 -${packageDiscount.toLocaleString('ko-KR')}원 적용</div>`
-      : '';
     return `
-      <label class="checkbox-option ${cls}" ${isPackage ? 'style="border-color:#D4A96E"' : ''}>
+      <label class="checkbox-option ${cls}">
         <input type="checkbox" data-bind="options" value="${code}" ${checked}>
-        <div style="flex:1">
-          <div>${o.name}</div>
-          ${packageBadge}
-        </div>
+        <span>${o.name}</span>
         <span class="price">+${amount.toLocaleString('ko-KR')}원</span>
       </label>`;
   };
 
-  // 옵션을 "본상품 옵션"과 "패키지 할인 시 상대편 옵션"으로 분리
+  // 패키지 옵션 (강조) 렌더 — 정가 취소선 + 할인가 + "20% OFF" 뱃지
+  const renderPackageOpt = ([code, o]) => {
+    const checked = s.data.options.includes(code) ? 'checked' : '';
+    const selectedBg = s.data.options.includes(code) ? 'background:linear-gradient(135deg,#FDF3DF,#F4E4C9)' : 'background:#FFFBF2';
+    const amount = resolveOptionAmount(product, code);
+    const basePrice = PACKAGE_BASE_LOOKUP[code] || 0;
+    const discount = getPackageDiscount(product, code);
+    const p = n => n.toLocaleString('ko-KR');
+    return `
+      <label class="checkbox-option" style="${selectedBg};border:2px solid #D4A96E;position:relative;padding:14px;align-items:flex-start">
+        <input type="checkbox" data-bind="options" value="${code}" ${checked} style="margin-top:3px">
+        <div style="flex:1;margin-left:4px">
+          <div style="font-weight:700;font-size:15px;color:#2A2624">${o.name}</div>
+          <div style="margin-top:6px;font-size:13px">
+            <span style="color:#999;text-decoration:line-through">정가 +${p(basePrice)}원</span>
+            &nbsp;<span style="color:#B89968;font-weight:700">→ +${p(amount)}원</span>
+          </div>
+          <div style="margin-top:6px;display:inline-block;padding:4px 10px;background:#B89968;color:#fff;border-radius:12px;font-size:11.5px;font-weight:700">
+            💰 패키지 할인 −${p(discount)}원
+          </div>
+        </div>
+        <span style="position:absolute;top:-10px;right:12px;background:#C25B5B;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.05em">20% OFF</span>
+      </label>`;
+  };
+
+  // 옵션을 "본 옵션 / 패키지 옵션 / 상대편 옵션(패키지 활성 시)"으로 분리
   const isChukuidaeOptCode = code => ['readyBag', 'offlineLedger', 'extraManager'].includes(code);
   const isSnapBundleCode = code => ['snapSpecialBundle', 'snapPremiumBundle'].includes(code);
   const isChukuidaeBundleCode = code => ['chukuidae1', 'chukuidae2', 'chukuidae4'].includes(code);
 
   const entries = Object.entries(optionsTable);
-  let ownGroup, otherGroup, otherGroupTitle;
+  let regularOwnGroup, packageGroup, otherGroup, otherGroupTitle;
   if (product.category === 'snap') {
-    // 스냅 본 옵션 = chukuidae1/2/4 포함 (패키지 트리거); 활성 시 축의대 순수 옵션 별도 그룹
-    ownGroup = entries.filter(([c]) => !isChukuidaeOptCode(c));
+    regularOwnGroup = entries.filter(([c]) => !isChukuidaeOptCode(c) && !isPackageCode(c));
+    packageGroup = entries.filter(([c]) => isChukuidaeBundleCode(c));
     otherGroup = entries.filter(([c]) => isChukuidaeOptCode(c));
-    otherGroupTitle = '축의대 추가 옵션 (패키지 할인 시)';
+    otherGroupTitle = '축의대 추가 옵션 (패키지 선택 시)';
   } else {
-    // 축의대 본 옵션 = readyBag/offlineLedger/extraManager + snap 패키지 트리거
-    ownGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeBundleCode(c) || isSnapBundleCode(c));
+    regularOwnGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeBundleCode(c) && isChukuidaeOptCode(c));
+    packageGroup = entries.filter(([c]) => isSnapBundleCode(c));
     otherGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeOptCode(c));
-    otherGroupTitle = '스냅 추가 옵션 (패키지 할인 시)';
+    otherGroupTitle = '스냅 추가 옵션 (패키지 선택 시)';
   }
 
-  const ownHtml = ownGroup.map(renderOpt).join('');
-  const otherHtml = bundleActive && otherGroup.length
-    ? `<h3 style="margin-top:16px">${otherGroupTitle}</h3><div class="checkbox-group">${otherGroup.map(renderOpt).join('')}</div>`
+  const regularHtml = regularOwnGroup.length
+    ? `<h3 style="margin-top:8px">추가 옵션</h3><div class="checkbox-group">${regularOwnGroup.map(renderRegularOpt).join('')}</div>`
     : '';
 
-  // 선택된 패키지 옵션의 총 할인액 (하이라이트 표시용)
+  // 패키지 할인 전용 섹션 (최대 노출)
+  const packageExplainer = product.category === 'snap'
+    ? `축의대까지 함께 하시면 <b>${product.name === '1인 스페셜' ? '-70,000원' : product.name === '2인 프리미엄' ? '-110,000원' : '-70,000~110,000원'}</b> 즉시 할인!`
+    : `스냅까지 함께 하시면 <b>스페셜 -70,000원 / 프리미엄 -110,000원</b> 즉시 할인!`;
+
+  const packageSection = packageGroup.length
+    ? `
+      <div style="margin-top:20px;padding:18px;border-radius:12px;background:linear-gradient(135deg,#FFF8E8,#FBE9C7);border:1.5px solid #E0C68C">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:20px">💎</span>
+          <div style="font-size:16px;font-weight:800;color:#5A3B1A">패키지 할인 상품</div>
+          <span style="background:#C25B5B;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.05em">스냅 정가 20% OFF</span>
+        </div>
+        <div style="font-size:13px;color:#7A5A2E;line-height:1.55;margin-bottom:12px">
+          ${packageExplainer}<br>
+          <span style="font-size:12px;color:#A08858">따로 결제하는 것보다 스냅 가격의 20%를 통째로 깎아드려요. 어느 쪽에서 시작해도 동일한 할인가가 적용됩니다.</span>
+        </div>
+        <div class="checkbox-group" style="gap:12px">${packageGroup.map(renderPackageOpt).join('')}</div>
+      </div>
+    `
+    : '';
+
+  const otherHtml = bundleActive && otherGroup.length
+    ? `<h3 style="margin-top:16px">${otherGroupTitle}</h3><div class="checkbox-group">${otherGroup.map(renderRegularOpt).join('')}</div>`
+    : '';
+
+  // 선택된 패키지 옵션의 총 할인액 (활성화 후 하이라이트)
   const activePackageSaving = bundleActive
     ? s.data.options
-        .filter(c => PACKAGE_CODES.includes(c))
+        .filter(c => isPackageCode(c))
         .reduce((sum, c) => sum + getPackageDiscount(product, c), 0)
     : 0;
   const bundleNote = bundleActive
     ? `<div class="info-box" style="margin-top:12px;background:#F4E4C9;border-left-color:#B89968;color:#5A3B1A">
-         ✨ <strong>패키지 할인 적용! 총 ${activePackageSaving.toLocaleString('ko-KR')}원 할인</strong>되었습니다.<br>
-         <span style="font-size:12px;color:#7A5A2E">스냅 ⇄ 축의대 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</span>
+         ✨ <strong>패키지 할인 적용 완료! 총 ${activePackageSaving.toLocaleString('ko-KR')}원 할인</strong>되었습니다.
        </div>`
     : '';
 
@@ -512,8 +563,8 @@ registerRenderer(4, s => {
   return `
     <div class="card">
       <h2>4. 추가 옵션</h2>
-      <h3>선택 옵션</h3>
-      <div class="checkbox-group">${ownHtml}</div>
+      ${regularHtml}
+      ${packageSection}
       ${otherHtml}
       ${bundleNote}
       ${dolQuestion}
