@@ -296,8 +296,8 @@ export const OWNER_INFO = {
 // 세팅 방법은 README의 "Google Sheets 신청 이력 관리" 섹션 참고
 // URL을 비워두면 해당 카테고리의 자동 저장은 비활성화됨 (계약서 흐름은 정상 작동)
 export const SHEETS_WEBHOOK_URLS = {
-  snap: 'https://script.google.com/macros/s/AKfycbx4eogBqNv8j4sedJ0kK2KtbO0zfH1bhJQ2FVg14Eyg2OKKP5gPR3HLJDjZKFPyZP3mVQ/exec',
-  chukuidae: 'https://script.google.com/macros/s/AKfycbx4eogBqNv8j4sedJ0kK2KtbO0zfH1bhJQ2FVg14Eyg2OKKP5gPR3HLJDjZKFPyZP3mVQ/exec', // 스냅 시트에 같이 기록 (패키지 상품 대응)
+  snap: 'https://script.google.com/macros/s/AKfycbxtNfYCqGd9HAvLo0Zxx0hwYGicvEFAH-n2iFe6jI2tQPNbed_hHnOWe-pPdeVhXCecJw/exec',
+  chukuidae: 'https://script.google.com/macros/s/AKfycbxtNfYCqGd9HAvLo0Zxx0hwYGicvEFAH-n2iFe6jI2tQPNbed_hHnOWe-pPdeVhXCecJw/exec', // 스냅 시트에 같이 기록 (패키지 상품 대응)
 };
 
 // 하위 호환 (기존 코드가 아직 import 하고 있으면 스냅 URL을 반환)
