@@ -513,7 +513,7 @@ registerRenderer(4, s => {
         </div>
         <div style="font-size:13px;color:#7A5A2E;line-height:1.55;margin-bottom:12px">
           ${packageExplainer}<br>
-          <span style="font-size:12px;color:#A08858">따로 결제하는 것보다 스냅 가격의 20%를 통째로 깎아드려요. 어느 쪽에서 시작해도 동일한 할인가가 적용됩니다.</span>
+          <span style="font-size:12px;color:#A08858">따로 결제하는 것보다 스냅 가격의 20%를 통째로 할인해드려요! 어느 쪽에서 시작해도 동일한 할인가가 적용됩니다.</span>
         </div>
         <div class="checkbox-group" style="gap:12px">${packageGroup.map(renderPackageOpt).join('')}</div>
       </div>
