@@ -143,6 +143,7 @@ function registerStep(num, title, renderFn, afterRenderFn) {
 // Step 1 — 상품·서비스 대상
 registerStep(1, '상품·서비스 대상', s => {
   const products = [
+    { v: 'basic', label: '1인 1팀 베이직' },
     { v: 'std', label: '2인 1팀 스탠다드' },
     { v: 'premium', label: '4인 2팀 프리미엄' },
   ];
@@ -646,7 +647,7 @@ async function submitSurvey() {
   state.data.submittedAt = new Date().toISOString();
   saveSession();
 
-  const PRODUCT_LABEL = { std: '2인 1팀 스탠다드', premium: '4인 2팀 프리미엄' };
+  const PRODUCT_LABEL = { basic: '1인 1팀 베이직', std: '2인 1팀 스탠다드', premium: '4인 2팀 프리미엄' };
   const SIDE_LABEL = { groom: '신랑측', bride: '신부측', both: '양측' };
   const MEAL_LABEL = { buffet: '뷔페', course: '코스', hansang: '한상차림', other: '기타' };
   const READY_LABEL = { self: '직접 준비함', cupidon: '큐피돈 준비 요청' };
