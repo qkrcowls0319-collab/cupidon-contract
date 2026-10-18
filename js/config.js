@@ -304,7 +304,7 @@ export const SHEETS_WEBHOOK_URLS = {
 // 설문 응답 시트: https://docs.google.com/spreadsheets/d/1NHAyIKwaXR3asTHdiLCs7C4Ss5VG_dAB-EmRxVm2QRI
 // 세팅 가이드: docs/SURVEY_D7_SETUP.md
 // 비어있으면 설문 제출 시 네트워크 실패 처리됨
-export const SURVEY_WEBHOOK_URL = '';
+export const SURVEY_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzrT8loSxsyEfPzrTqPFaVrcTd6bV9NpXdghKoFjlPr4XF9Y8UZv8VUHnscwXLfi5thTQ/exec';
 
 // 하위 호환 (기존 코드가 아직 import 하고 있으면 스냅 URL을 반환)
 export const SHEETS_WEBHOOK_URL = SHEETS_WEBHOOK_URLS.snap;
