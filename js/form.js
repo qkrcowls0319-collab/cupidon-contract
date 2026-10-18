@@ -743,22 +743,22 @@ registerRenderer(8, s => {
         <p style="color:var(--text-mute)">서명된 계약서 PDF가 참고용으로 다운로드되었습니다.</p>
 
         <div class="send-primary-box">
-          <div class="send-primary-title">📮 사장님께 신청 내역 보내기</div>
+          <div class="send-primary-title">📮 예약된 내역을 큐피돈 스냅 채팅방에 전달해주세요</div>
           <div style="font-size:13px;color:#6B4E1E;line-height:1.6;margin-bottom:12px">
-            아래 버튼을 누르면 <strong>신청 내역이 자동 복사되고 카카오톡 채널이 열립니다.</strong><br>
-            채팅창에 <strong>붙여넣기(길게 눌러 붙여넣기 또는 Ctrl+V)</strong> 하고 전송해주세요.
+            버튼을 클릭하면 <strong>자동 복사</strong>되오니 <strong>채팅방에 붙여넣기</strong> 해주세요.
           </div>
           <button id="send-to-kakao-btn" class="btn btn-share">
-            📋 신청 내역 복사 + 카톡 채널 열기
+            💬 내역 복사하고 큐피돈 스냅 채팅방 열기
           </button>
         </div>
 
         <div class="send-steps">
           <div class="send-steps-title">✅ 이후 진행 절차</div>
           <ol class="send-steps-list">
-            <li>사장님이 신청 내역 확인 후 <strong>예약 등록</strong></li>
-            <li>고객님이 아래 계좌로 <strong>계약금 ${_computeQuote(s).deposit.toLocaleString('ko-KR')}원 입금</strong> (1시간 이내)</li>
-            <li>사장님이 <strong>서명된 계약서 PDF를 카톡으로 전달</strong>드립니다</li>
+            <li>큐피돈 스냅 채팅방에 <strong>신청 내역 전송</strong></li>
+            <li>사장님이 신청 내역 확인 후 <strong>예약 등록 및 계약금 입금 계좌 안내</strong></li>
+            <li>안내받은 계좌로 <strong>계약금 입금</strong> → 예약 최종 확정</li>
+            <li>사장님이 <strong>서명된 계약서 PDF를 카톡으로 회신</strong>드립니다</li>
           </ol>
         </div>
 
@@ -766,22 +766,6 @@ registerRenderer(8, s => {
           <button class="btn btn-secondary" id="copy-msg-btn">📋 신청 내역만 복사</button>
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
           <button class="btn btn-secondary" id="new-contract-btn" style="color:#999">🔄 새 계약 시작 (현재 세션 삭제)</button>
-        </div>
-
-        <div class="deposit-box">
-          <div class="deposit-title">💰 계약금 입금 안내</div>
-          <div class="deposit-alert">
-            <div class="deposit-alert-title">⏰ 1시간 이내 입금 필수</div>
-            <div class="deposit-alert-body">계약금 <strong>${_computeQuote(s).deposit.toLocaleString('ko-KR')}원</strong>을
-            <strong>1시간 이내</strong>로 입금해주셔야 예약이 <strong>최종 확정</strong>됩니다.<br>
-            <span style="font-size:12px;color:#8a6d3b">시간 내 미입금 시 예약이 자동 취소될 수 있습니다.</span></div>
-          </div>
-          <div class="deposit-account">
-            <div><strong>은행:</strong> ${OWNER_INFO.bankName}</div>
-            <div><strong>계좌:</strong> ${OWNER_INFO.bankAccount}</div>
-            <div><strong>예금주:</strong> ${OWNER_INFO.accountHolder}</div>
-            <button class="btn-copy-account" id="copy-account-btn">계좌번호 복사</button>
-          </div>
         </div>
       </div>
     `;
@@ -867,19 +851,6 @@ registerRenderer(8, s => {
     });
   }
 
-  // 계좌번호 복사 버튼
-  const copyAcc = document.getElementById('copy-account-btn');
-  if (copyAcc) {
-    copyAcc.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(OWNER_INFO.bankAccount);
-        copyAcc.textContent = '✓ 복사됨';
-        setTimeout(() => { copyAcc.textContent = '계좌번호 복사'; }, 2000);
-      } catch (e) {
-        showFallbackMessage(OWNER_INFO.bankAccount);
-      }
-    });
-  }
 });
 
 function showFallbackMessage(text) {

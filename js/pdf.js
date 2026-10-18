@@ -95,8 +95,28 @@ function sanitizeFilename(name) {
   return (name || 'customer').replace(/[\\/:*?"<>|]/g, '');
 }
 
+// 인앱 브라우저(카카오톡·인스타·페북·네이버·라인) 감지
+// 이들 환경에서는 <a download>가 "지원하지 않는 기능"으로 뜨거나 무시됨 → 새 탭으로 PDF 오픈
+function isInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  return /KAKAOTALK|Instagram|FBAN|FBAV|NAVER|Line\//i.test(ua);
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
+
+  if (isInAppBrowser()) {
+    // 인앱 브라우저: 새 창(또는 현재 창)에 PDF 뷰어로 열어 → 사용자가 저장/공유
+    const win = window.open(url, '_blank');
+    if (!win) {
+      // 팝업 차단 시 현재 창에서 이동
+      window.location.href = url;
+    }
+    // 사용자가 PDF를 보고 저장할 시간 확보 (즉시 revoke 시 빈 탭 됨)
+    setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
