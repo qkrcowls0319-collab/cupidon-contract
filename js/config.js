@@ -117,7 +117,7 @@ export const PRODUCTS = {
     category: 'chukuidae',
     spec: {
       담당자: '1인 1팀 (격식 정장)',
-      도착: '예식 1시간 30분 전',
+      도착: '예식 70분 전 (축의대 시작 기준)',
       진행: '약 3시간 (예식 완료까지)',
       접수인원: '한 측당 축의 봉투 70매 기준',
       장부: '실시간 디지털 장부(태블릿) + 정산 리포트',
@@ -140,7 +140,7 @@ export const PRODUCTS = {
     category: 'chukuidae',
     spec: {
       담당자: '2인 1팀 (격식 정장)',
-      도착: '예식 1시간 30분 전',
+      도착: '예식 70분 전 (축의대 시작 기준)',
       진행: '약 3시간 (예식 완료까지)',
       장부: '실시간 디지털 장부(태블릿) + 정산 리포트',
       보관: '이중잠금 축의금 보관함',
@@ -161,7 +161,7 @@ export const PRODUCTS = {
     category: 'chukuidae',
     spec: {
       담당자: '4인 2팀 (양가 각 2인씩 · 격식 정장)',
-      도착: '예식 1시간 30분 전',
+      도착: '예식 70분 전 (축의대 시작 기준)',
       진행: '약 3시간 (예식 완료까지)',
       커버: '신랑측·신부측 접수대 동시 운영',
       장부: '실시간 디지털 장부(태블릿) + 정산 리포트',
@@ -199,12 +199,12 @@ export const PROMISE_DISCOUNTS = {
 // ============================
 
 export const IMMEDIATE_DISCOUNTS_CHUKUIDAE = {
-  sameDay: { name: '당일 계약 할인', amount: -20000, appliesTo: 'all' },
+  sameDay: { name: '당일 계약 할인', amount: -30000, appliesTo: 'all' },
 };
 
 export const PROMISE_DISCOUNTS_CHUKUIDAE = {
   contractReview: { name: '계약 후기 약속', amount: -10000, appliesTo: 'all' },
-  usageReview: { name: '이용 후기 약속', amount: -20000, appliesTo: 'all' },
+  usageReview: { name: '이용 후기 약속', amount: -10000, appliesTo: 'all' },
 };
 
 // ============================
