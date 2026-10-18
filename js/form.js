@@ -34,12 +34,39 @@ const DEFAULT_DATA = {
   immediateDiscounts: [],
   promiseDiscounts: [],
   partnerCode: '',
+  partnerCodeChecked: false,     // 짝꿍코드 유효성 조회 완료 여부
+  partnerCodeExpired: false,     // 2회 이상 사용되어 만료
+  partnerCodeUsedCount: 0,       // 현재까지 사용 횟수 (UI 표시용)
+  issuedPartnerCode: '',         // 이 고객에게 발급된 짝꿍코드 (제출 시 자동 생성)
   quoteConfirmed: false,
   signature: '',
   agreed: false,
   submittedAt: '',      // 시트 전송 완료 시각 (중복 전송 방지 플래그)
   submissionId: '',     // 고유 제출 ID (서버측 중복 검증용)
 };
+
+// 짝꿍코드 생성 (CP + 6자리 대문자 영숫자, 혼동 문자 제외)
+function generatePartnerCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 0/O/1/I/L 제외
+  let code = 'CP';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+// 짝꿍코드 사용 횟수 조회 (GAS doGet 호출)
+async function checkPartnerCode(code) {
+  const url = `${SHEETS_WEBHOOK_URLS.snap}?action=checkPartner&code=${encodeURIComponent(code)}`;
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn('짝꿍코드 조회 실패:', e);
+    return { status: 'error', error: e.message };
+  }
+}
 
 // localStorage에서 저장된 세션 복원 (있으면)
 function loadSavedState() {
@@ -615,12 +642,24 @@ registerRenderer(5, s => {
 
   // 짝꿍코드는 스냅 상품 또는 스냅 패키지 할인(bundle) 적용 시 노출
   const partnerEligible = product?.category === 'snap' || isBundle(product, s.data.options);
+  // 짝꿍코드 조회 결과 피드백 (expired / valid / 미확인)
+  let partnerStatusLine = '';
+  if (s.data.partnerCode?.trim() && s.data.partnerCodeChecked) {
+    if (s.data.partnerCodeExpired) {
+      partnerStatusLine = `<div style="margin-top:6px;padding:6px 10px;background:#FDECEC;color:#C25B5B;border-radius:6px;font-size:12.5px;font-weight:600">⚠ 만료된 코드입니다 (이미 ${s.data.partnerCodeUsedCount}회 사용). 다른 코드를 입력하거나 짝꿍 할인을 해제해주세요.</div>`;
+    } else {
+      const remaining = Math.max(0, 2 - (s.data.partnerCodeUsedCount || 0));
+      partnerStatusLine = `<div style="margin-top:6px;padding:6px 10px;background:#E8F5E9;color:#5A6B4E;border-radius:6px;font-size:12.5px;font-weight:600">✓ 사용 가능 (현재 ${s.data.partnerCodeUsedCount}회 사용 · 잔여 ${remaining}회)</div>`;
+    }
+  }
   const partnerField = s.data.immediateDiscounts.includes('partner') && partnerEligible
     ? `
       <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
         <label>짝꿍코드 * (필수 입력)</label>
-        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: KHR2026">
+        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: CPX3K2A4" id="partner-code-input" autocomplete="off" style="text-transform:uppercase">
+        <div id="partner-check-feedback">${partnerStatusLine}</div>
         ${s.errors.partnerCode ? `<div class="error">${s.errors.partnerCode}</div>` : ''}
+        <div style="margin-top:4px;font-size:11px;color:#8a6d3b">💡 짝꿍코드는 최대 2회까지 사용 가능합니다 (3번째부터 자동 만료)</div>
       </div>`
     : '';
 
@@ -639,6 +678,49 @@ registerRenderer(5, s => {
       </div>
     </div>
   `;
+}, (s) => {
+  // Step 5 afterRender: 짝꿍코드 input blur 시 서버 조회
+  const input = document.getElementById('partner-code-input');
+  const feedback = document.getElementById('partner-check-feedback');
+  if (!input || !feedback) return;
+
+  const runCheck = async () => {
+    const code = input.value.trim().toUpperCase();
+    if (!code) {
+      s.data.partnerCodeChecked = false;
+      s.data.partnerCodeExpired = false;
+      s.data.partnerCodeUsedCount = 0;
+      feedback.innerHTML = '';
+      saveSession();
+      return;
+    }
+    // 입력값 정규화 저장
+    s.data.partnerCode = code;
+    feedback.innerHTML = `<div style="margin-top:6px;padding:6px 10px;background:#F4F4F4;color:#666;border-radius:6px;font-size:12.5px">⏳ 코드 확인 중...</div>`;
+
+    const result = await checkPartnerCode(code);
+    if (result.status === 'error') {
+      feedback.innerHTML = `<div style="margin-top:6px;padding:6px 10px;background:#FFF4E0;color:#8a6d3b;border-radius:6px;font-size:12.5px">⚠ 조회 실패 (네트워크). 그대로 진행 가능하지만 사장님이 수동 확인합니다.</div>`;
+      s.data.partnerCodeChecked = false;
+      s.data.partnerCodeExpired = false;
+      saveSession();
+      return;
+    }
+    s.data.partnerCodeChecked = true;
+    s.data.partnerCodeUsedCount = result.usedCount || 0;
+    s.data.partnerCodeExpired = result.status === 'expired';
+    saveSession();
+    if (s.data.partnerCodeExpired) {
+      feedback.innerHTML = `<div style="margin-top:6px;padding:6px 10px;background:#FDECEC;color:#C25B5B;border-radius:6px;font-size:12.5px;font-weight:600">⚠ 만료된 코드입니다 (이미 ${result.usedCount}회 사용). 다른 코드를 입력하거나 짝꿍 할인을 해제해주세요.</div>`;
+    } else {
+      const remaining = Math.max(0, 2 - result.usedCount);
+      feedback.innerHTML = `<div style="margin-top:6px;padding:6px 10px;background:#E8F5E9;color:#5A6B4E;border-radius:6px;font-size:12.5px;font-weight:600">✓ 사용 가능 (현재 ${result.usedCount}회 사용 · 잔여 ${remaining}회)</div>`;
+    }
+  };
+
+  input.addEventListener('blur', runCheck);
+  // 재방문·세션 복원 시 이미 입력된 코드가 아직 미조회면 즉시 조회
+  if (input.value.trim() && !s.data.partnerCodeChecked) runCheck();
 });
 
 // ============================
@@ -908,6 +990,20 @@ registerRenderer(8, s => {
           </ol>
         </div>
 
+        ${s.data.issuedPartnerCode ? `
+        <div style="margin-top:16px;padding:14px;border-radius:12px;background:linear-gradient(135deg,#FFF8E8,#FBE9C7);border:1.5px solid #E0C68C;text-align:center">
+          <div style="font-size:14px;font-weight:800;color:#5A3B1A;margin-bottom:4px">🎁 발급 짝꿍코드</div>
+          <div style="font-size:22px;font-weight:900;letter-spacing:0.15em;color:#8a5a1a;margin:8px 0;padding:8px 14px;background:#fff;border-radius:6px;display:inline-block;border:1px dashed #B89968">
+            ${s.data.issuedPartnerCode}
+          </div>
+          <div style="font-size:12.5px;color:#7A5A2E;line-height:1.6;margin-top:6px">
+            친구에게 공유하면 <strong>친구가 큐피돈 예약 시 -20,000원 할인</strong> 받을 수 있어요<br>
+            <span style="font-size:11.5px;color:#A08858">(최대 2명까지 사용 가능 · 3번째부터 자동 만료)</span>
+          </div>
+          <button id="copy-issued-code-btn" class="btn btn-secondary" style="margin-top:10px;padding:8px 16px;font-size:13px">📋 코드 복사</button>
+        </div>
+        ` : ''}
+
         <div class="actions" style="flex-direction:column;gap:10px;margin-top:16px">
           <button class="btn btn-secondary" id="copy-msg-btn">📋 신청 내역만 복사</button>
           <button class="btn btn-secondary" id="redownload-btn">PDF 다시 다운로드</button>
@@ -997,6 +1093,20 @@ registerRenderer(8, s => {
     });
   }
 
+  // 발급 짝꿍코드 복사 버튼
+  const copyIssuedBtn = document.getElementById('copy-issued-code-btn');
+  if (copyIssuedBtn && state.data.issuedPartnerCode) {
+    copyIssuedBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(state.data.issuedPartnerCode);
+        copyIssuedBtn.textContent = '✓ 코드가 복사되었습니다';
+        setTimeout(() => { copyIssuedBtn.textContent = '📋 코드 복사'; }, 2000);
+      } catch (e) {
+        showFallbackMessage(state.data.issuedPartnerCode);
+      }
+    });
+  }
+
 });
 
 function showFallbackMessage(text) {
@@ -1082,6 +1192,10 @@ function buildKakaoMessage() {
       ? ` (출장비${d.region === 'other' ? ' · 사장님 안내' : ''} +${p(quote.travelFee)})`
       : '';
 
+  const issuedLine = d.issuedPartnerCode
+    ? `\n\n🎁 발급 짝꿍코드: ${d.issuedPartnerCode} (최대 2회 사용 가능 · 친구에게 공유)`
+    : '';
+
   return `[큐피돈 ${categoryLabel} 계약 신청]
 
 ${d.customerName} / ${d.customerPhone}
@@ -1094,7 +1208,7 @@ ${productLine}
 총액: ${p(quote.total)}원${travelHint}
 계약금: ${p(quote.deposit)}원 ⭐
 잔금: ${p(quote.balance)}원
-━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━${issuedLine}
 
 ✅ 서명 완료`;
 }
@@ -1120,6 +1234,10 @@ async function submitContract() {
       // 최초 제출 시에만 시트 전송 + 완료 마크 저장
       if (!state.data.submissionId) {
         state.data.submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      }
+      // 이 고객에게 발급할 짝꿍코드 생성 (최초 1회)
+      if (!state.data.issuedPartnerCode) {
+        state.data.issuedPartnerCode = generatePartnerCode();
       }
       state.data.submittedAt = new Date().toISOString();
       saveSession();
@@ -1170,7 +1288,9 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
     dolAloneSurcharge: data.product === 'dol' && data.dolHasMainSnap === false ? '적용(+50,000)' : '',
     immediateDiscounts: immediateNames,
     promiseDiscounts: promiseNames,
-    partnerCode: data.partnerCode || '',
+    partnerCode: data.partnerCode || '',               // 사용한 짝꿍코드 (타인이 발급한 것)
+    partnerCodeUsedCount: data.partnerCodeUsedCount || 0,
+    issuedPartnerCode: data.issuedPartnerCode || '',    // 이번 계약으로 이 고객에게 발급된 코드
     travelFee: quote.travelFee !== null ? quote.travelFee : '별도 문의',
     total: quote.total,
     deposit: quote.deposit,

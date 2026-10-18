@@ -94,7 +94,7 @@ export const OWNER_INFO = {
 2. 시트 이름을 `큐피돈 신청 이력` 등으로 변경
 3. 1행에 아래 헤더를 붙여넣기 (A1부터):
    ```
-   접수시각	성함	연락처	예식일자	예식시간	장소	출장지역	상품	옵션	아이폰단독	즉시할인	후기약속	짝꿍코드	총액	계약금	잔금	후기반영잔금	견적확정
+   접수시각	성함	연락처	예식일자	예식시간	장소	출장지역	상품	옵션	아이폰단독	즉시할인	후기약속	짝꿍코드	발급 짝꿍코드	총액	계약금	잔금	후기반영잔금	견적확정
    ```
 
 ### 2. Apps Script 코드 붙여넣기
@@ -120,7 +120,8 @@ function doPost(e) {
       d.dolAloneSurcharge,
       d.immediateDiscounts,
       d.promiseDiscounts,
-      d.partnerCode,
+      d.partnerCode,            // 사용한 짝꿍코드
+      d.issuedPartnerCode,      // 이번 계약으로 발급된 코드 (고객이 친구에게 공유 가능)
       d.total,
       d.deposit,
       d.balance,
@@ -134,7 +135,35 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+// 짝꿍코드 사용 횟수 조회 (프론트의 Step 5 blur 시 호출)
+function doGet(e) {
+  if (e.parameter.action === 'checkPartner') {
+    const code = String(e.parameter.code || '').trim().toUpperCase();
+    if (!code) return jsonResp({ error: 'no code' });
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return jsonResp({ code, usedCount: 0, status: 'valid', remaining: 2 });
+    const idx = data[0].indexOf('짝꿍코드');
+    if (idx === -1) return jsonResp({ error: "'짝꿍코드' 컬럼이 없습니다" });
+    const usedCount = data.slice(1).filter(r =>
+      String(r[idx] || '').trim().toUpperCase() === code
+    ).length;
+    return jsonResp({
+      code, usedCount,
+      status: usedCount >= 2 ? 'expired' : 'valid',
+      remaining: Math.max(0, 2 - usedCount),
+    });
+  }
+  return jsonResp({ error: 'unknown action' });
+}
+function jsonResp(o) {
+  return ContentService.createTextOutput(JSON.stringify(o))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 ```
+
+> 📘 짝꿍코드 기능(발급·만료·재배포) 상세 설명은 [docs/PARTNER_CODE_SETUP.md](docs/PARTNER_CODE_SETUP.md) 참조
 
 3. 저장 아이콘(💾) 클릭 → 프로젝트 이름 입력 (예: `Cupidon Webhook`)
 

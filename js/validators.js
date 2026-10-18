@@ -26,8 +26,12 @@ export function validateStep(step, data) {
       }
       break;
     case 5:
-      if (data.immediateDiscounts?.includes('partner') && !data.partnerCode?.trim()) {
-        errors.partnerCode = '짝꿍코드를 입력해주세요.';
+      if (data.immediateDiscounts?.includes('partner')) {
+        if (!data.partnerCode?.trim()) {
+          errors.partnerCode = '짝꿍코드를 입력해주세요.';
+        } else if (data.partnerCodeExpired) {
+          errors.partnerCode = '만료된 코드입니다 (최대 2회 사용). 다른 코드를 입력하거나 짝꿍 할인을 해제해주세요.';
+        }
       }
       break;
     case 6:
