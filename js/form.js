@@ -661,73 +661,128 @@ registerRenderer(6, s => {
   const promiseTable = getPromiseDiscounts(product, s.data.options);
 
   const PACKAGE_CODES = ['chukuidae1', 'chukuidae2', 'chukuidae4', 'snapSpecialBundle', 'snapPremiumBundle'];
-  const optionLines = s.data.options.map(code => {
-    const o = optionsTable[code];
-    if (!o) return '';
-    const amt = resolveOptionAmount(product, code);
-    if (PACKAGE_CODES.includes(code)) {
-      const pkgDisc = getPackageDiscount(product, code);
-      return `<div class="quote-line" style="color:#8a5a1a"><span>+ ${o.name} <small style="font-weight:600">· 💰 패키지 -${p(pkgDisc)}</small></span><span>+${p(amt)}</span></div>`;
-    }
-    return `<div class="quote-line"><span>+ ${o.name}</span><span>+${p(amt)}</span></div>`;
-  }).join('');
+  // 패키지 옵션의 "할인 전 정가" 테이블
+  const PACKAGE_BASE_LOOKUP = {
+    chukuidae1: PRODUCTS.chukuidaeBasic.basePrice,
+    chukuidae2: PRODUCTS.chukuidaeStd.basePrice,
+    chukuidae4: PRODUCTS.chukuidaePremium.basePrice,
+    snapSpecialBundle: PRODUCTS.special.basePrice,
+    snapPremiumBundle: PRODUCTS.premium.basePrice,
+  };
 
-  // 총 패키지 할인액 (강조 라인용)
+  // === 1. 구성 라인 (각 항목을 "정상가"로 표시) ===
+  const compositionLines = [];
+  // 주 상품
+  compositionLines.push(`<div class="quote-line"><span>${product.name}</span><span>+${p(product.basePrice)}</span></div>`);
+  // 출장비
+  const travelLabel = s.data.region === 'other' ? '출장비 (사장님 안내)' : '출장비';
+  if (quote.travelFee === null) {
+    compositionLines.push(`<div class="quote-line"><span>출장비</span><span class="badge-warn">별도 문의</span></div>`);
+  } else if (quote.travelFee > 0) {
+    compositionLines.push(`<div class="quote-line"><span>${travelLabel}</span><span>+${p(quote.travelFee)}</span></div>`);
+  }
+  // 옵션들 (정상가 기준 표시)
+  s.data.options.forEach(code => {
+    const o = optionsTable[code];
+    if (!o) return;
+    const isPackage = PACKAGE_CODES.includes(code);
+    const listPrice = isPackage ? PACKAGE_BASE_LOOKUP[code] : resolveOptionAmount(product, code);
+    const marker = isPackage ? ' <small style="color:#B89968;font-weight:600">(패키지)</small>' : '';
+    compositionLines.push(`<div class="quote-line"><span>+ ${o.name}${marker}</span><span>+${p(listPrice)}</span></div>`);
+  });
+  // 돌 단독 가산
+  if (quote.dolSurcharge > 0) {
+    compositionLines.push(`<div class="quote-line"><span>+ 아이폰 단독 촬영</span><span>+${p(quote.dolSurcharge)}</span></div>`);
+  }
+
+  // === 2. 정상가 합계 ===
+  const optionsListTotal = s.data.options.reduce((sum, code) => {
+    if (!optionsTable[code]) return sum;
+    const isPackage = PACKAGE_CODES.includes(code);
+    return sum + (isPackage ? PACKAGE_BASE_LOOKUP[code] : resolveOptionAmount(product, code));
+  }, 0);
+  const listTotal = product.basePrice + (quote.travelFee || 0) + optionsListTotal + quote.dolSurcharge;
+
+  // === 3. 할인 라인 ===
   const totalPackageSaving = s.data.options
     .filter(c => PACKAGE_CODES.includes(c))
     .reduce((sum, c) => sum + getPackageDiscount(product, c), 0);
-  const packageSavingBanner = totalPackageSaving > 0
-    ? `<div class="quote-line" style="color:#8a5a1a;font-weight:700;background:#F9EBD4;padding:6px 8px;border-radius:4px;margin:4px 0"><span>✨ 패키지 할인 혜택</span><span>-${p(totalPackageSaving)}</span></div>`
-    : '';
 
-  const immediateLines = s.data.immediateDiscounts.map(code => {
+  const discountLines = [];
+  if (totalPackageSaving > 0) {
+    discountLines.push(`<div class="quote-line" style="color:#8a5a1a;font-weight:700"><span>💎 패키지 할인 <small style="font-weight:500">(스냅 정가 20%)</small></span><span>-${p(totalPackageSaving)}</span></div>`);
+  }
+  s.data.immediateDiscounts.forEach(code => {
     const d = immediateTable[code];
-    if (!d) return '';
+    if (!d) return;
     const label = code === 'partner' && s.data.partnerCode ? `${d.name} (${s.data.partnerCode})` : d.name;
-    return `<div class="quote-line"><span>${label}</span><span>${p(d.amount)}</span></div>`;
-  }).join('');
+    discountLines.push(`<div class="quote-line"><span>${label}</span><span>${p(d.amount)}</span></div>`);
+  });
 
+  const totalImmediateDiscount = Math.abs(quote.immediateDiscountTotal);
+  const totalDiscount = totalPackageSaving + totalImmediateDiscount;
+
+  // === 4. 후기 약속 ===
   const promiseLines = s.data.promiseDiscounts.map(code => {
     const d = promiseTable[code];
     if (!d) return '';
-    return `<div class="quote-line promise-line"><span>${d.name} <span class="badge-warn">약속</span></span><span>${p(d.amount)}</span></div>`;
+    return `<div class="quote-line"><span>${d.name} <span class="badge-warn">약속</span></span><span>${p(d.amount)}</span></div>`;
   }).join('');
 
-  const travelLabel = s.data.region === 'other' ? '출장비 (사장님 안내)' : '출장비';
-  const travelLine = quote.travelFee === null
-    ? '<div class="quote-line"><span>출장비</span><span class="badge-warn">별도 문의</span></div>'
-    : quote.travelFee > 0
-      ? `<div class="quote-line"><span>${travelLabel}</span><span>+${p(quote.travelFee)}</span></div>`
-      : '';
-
-  const dolLine = quote.dolSurcharge > 0
-    ? `<div class="quote-line"><span>아이폰 단독 촬영</span><span>+${p(quote.dolSurcharge)}</span></div>`
-    : '';
-
-  const promiseNote = s.data.promiseDiscounts.length
-    ? `<div class="quote-line promise-total"><span>✨ 후기 반영 시 최종 잔금</span><span>${p(quote.balanceAfterReviews)}</span></div>`
-    : '';
-
   const confirmChecked = s.data.quoteConfirmed ? 'checked' : '';
+
+  // === 섹션 조립 ===
+  const compositionSection = `
+    <div style="font-size:13px;font-weight:700;color:#6B5B4E;margin:4px 0 6px">📋 구성 (정상가 기준)</div>
+    ${compositionLines.join('')}
+    <div class="quote-line" style="border-top:1px dashed #B89968;padding-top:6px;margin-top:4px;font-weight:700;color:#2A2624">
+      <span>정상가 합계</span><span>${p(listTotal)}</span>
+    </div>
+  `;
+
+  const discountSection = totalDiscount > 0 ? `
+    <div style="font-size:13px;font-weight:700;color:#C25B5B;margin:14px 0 6px">💰 할인 적용</div>
+    ${discountLines.join('')}
+    <div class="quote-line" style="border-top:1px dashed #C25B5B;padding-top:6px;margin-top:4px;font-weight:700;color:#C25B5B">
+      <span>할인 합계</span><span>-${p(totalDiscount)}</span>
+    </div>
+  ` : '';
+
+  const finalSection = `
+    <div style="margin-top:14px;padding:12px 14px;background:linear-gradient(135deg,#FDF3DF,#F4E4C9);border-radius:8px;border:1.5px solid #B89968">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:800;color:#5A3B1A">
+        <span>✨ 최종 총액</span><span>${p(quote.total)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13px;color:#7A5A2E">
+        <span>계약금 (고정)</span><span>${p(quote.deposit)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px;font-size:14px;font-weight:700;color:#5A3B1A">
+        <span>잔금</span><span>${p(quote.balance)}</span>
+      </div>
+    </div>
+  `;
+
+  const promiseSection = s.data.promiseDiscounts.length ? `
+    <div style="margin-top:14px;padding:10px 12px;background:#F8F3EB;border-radius:6px;border-left:3px solid #7A9B76">
+      <div style="font-size:13px;font-weight:700;color:#5A6B4E;margin-bottom:6px">📬 후기 약속 할인 (잔금에서 추가 차감 가능)</div>
+      ${promiseLines}
+      <div class="quote-line" style="border-top:1px dashed #7A9B76;padding-top:6px;margin-top:4px;font-weight:700;color:#5A6B4E">
+        <span>✨ 후기 반영 시 최종 잔금</span><span>${p(quote.balanceAfterReviews)}</span>
+      </div>
+    </div>
+  ` : '';
 
   return `
     <div class="card">
       <h2>6. 견적 확인</h2>
       <div class="quote-summary">
-        <div class="quote-line"><span>${product.name}</span><span>${p(quote.subtotal)}</span></div>
-        ${travelLine}
-        ${optionLines}
-        ${packageSavingBanner}
-        ${dolLine}
-        ${immediateLines}
-        <div class="quote-line total"><span>총액</span><span>${p(quote.total)}</span></div>
-        <div class="quote-line"><span>계약금 (고정)</span><span>${p(quote.deposit)}</span></div>
-        <div class="quote-line balance"><span>잔금</span><span>${p(quote.balance)}</span></div>
-        ${promiseLines}
-        ${promiseNote}
+        ${compositionSection}
+        ${discountSection}
+        ${finalSection}
+        ${promiseSection}
       </div>
-      ${!quote.isQuoteFinal ? '<div class="info-box">출장비는 별도 문의 후 반영되므로, 위 총액에는 출장비가 포함되어 있지 않습니다.</div>' : ''}
-      <div class="field ${s.errors.quoteConfirmed ? 'has-error' : ''}">
+      ${!quote.isQuoteFinal ? '<div class="info-box" style="margin-top:12px">출장비는 별도 문의 후 반영되므로, 위 총액에는 출장비가 포함되어 있지 않습니다.</div>' : ''}
+      <div class="field ${s.errors.quoteConfirmed ? 'has-error' : ''}" style="margin-top:14px">
         <label class="checkbox-option ${s.data.quoteConfirmed ? 'selected' : ''}">
           <input type="checkbox" data-bind="quoteConfirmed" ${confirmChecked}>
           <span>위 금액으로 계약을 진행합니다.</span>
