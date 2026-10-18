@@ -75,7 +75,7 @@ export async function generateContractPDF(formData) {
   const base64 = pdf.output('datauristring').split(',')[1];
   const product = PRODUCTS[formData.product];
   const prefix = quote.isBundle
-    ? '큐피돈_번들_계약서'
+    ? '큐피돈_패키지_계약서'
     : product?.category === 'chukuidae' ? '큐피돈_축의대_계약서' : '큐피돈_계약서';
   const filename = `${prefix}_${PRODUCT_LABEL(formData.product)}_${sanitizeFilename(formData.customerName)}_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}.pdf`;
 
