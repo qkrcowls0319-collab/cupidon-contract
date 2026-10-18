@@ -136,28 +136,58 @@ function doPost(e) {
   }
 }
 
-// 짝꿍코드 사용 횟수 조회 (프론트의 Step 5 blur 시 호출)
+// doGet: 짝꿍코드 조회(checkPartner) + 발급(generateCode) 두 가지 액션
 // 매칭: 뒤쪽 숫자만 추출해서 비교 (영문/대소문자/공백 무시)
+// 발급: Cupid{YYMMDD-예식일}{N} 형태, N은 같은 예식일 기존 코드 최대 번호 + 1
 function doGet(e) {
-  if (e.parameter.action === 'checkPartner') {
-    const codeDigits = extractDigits(e.parameter.code);
-    if (!codeDigits) return jsonResp({ error: 'no digits in code' });
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return jsonResp({ code: e.parameter.code, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
-    const idx = data[0].indexOf('짝꿍코드');
-    if (idx === -1) return jsonResp({ error: "'짝꿍코드' 컬럼이 없습니다" });
-    const usedCount = data.slice(1).filter(r =>
-      extractDigits(r[idx]) === codeDigits
-    ).length;
-    return jsonResp({
-      code: e.parameter.code, codeDigits, usedCount,
-      status: usedCount >= 2 ? 'expired' : 'valid',
-      remaining: Math.max(0, 2 - usedCount),
-    });
-  }
+  const action = e.parameter.action;
+  if (action === 'checkPartner') return checkPartner_(e.parameter.code);
+  if (action === 'generateCode') return generateCode_(e.parameter.date);
   return jsonResp({ error: 'unknown action' });
 }
+
+function checkPartner_(rawCode) {
+  const codeDigits = extractDigits(rawCode);
+  if (!codeDigits) return jsonResp({ error: 'no digits in code' });
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return jsonResp({ code: rawCode, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
+  const idx = data[0].indexOf('짝꿍코드');
+  if (idx === -1) return jsonResp({ error: "'짝꿍코드' 컬럼이 없습니다" });
+  const usedCount = data.slice(1).filter(r => extractDigits(r[idx]) === codeDigits).length;
+  return jsonResp({
+    code: rawCode, codeDigits, usedCount,
+    status: usedCount >= 2 ? 'expired' : 'valid',
+    remaining: Math.max(0, 2 - usedCount),
+  });
+}
+
+function generateCode_(rawDate) {
+  // rawDate: 'YYYY-MM-DD' (예식일)
+  if (!rawDate || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return jsonResp({ error: 'invalid date format (expected YYYY-MM-DD)' });
+  }
+  const [y, m, d] = rawDate.split('-');
+  const dateDigits = y.slice(2) + m + d;  // YYMMDD
+  const prefix = 'Cupid' + dateDigits;
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  const header = data[0];
+  const issuedIdx = header.indexOf('발급 짝꿍코드');
+  if (issuedIdx === -1) return jsonResp({ error: "'발급 짝꿍코드' 컬럼이 없습니다" });
+
+  // 같은 예식일 prefix로 발급된 코드들의 N 최대값 조회
+  const existingNs = data.slice(1)
+    .map(r => String(r[issuedIdx] || '').trim())
+    .filter(c => c.toLowerCase().startsWith(prefix.toLowerCase()))
+    .map(c => parseInt(c.substring(prefix.length), 10))
+    .filter(n => !isNaN(n));
+  const nextN = existingNs.length ? Math.max.apply(null, existingNs) + 1 : 1;
+
+  return jsonResp({ code: prefix + nextN, prefix, nextN });
+}
+
 function extractDigits(raw) {
   const m = String(raw || '').trim().match(/(\d+)\s*$/);
   return m ? m[1] : '';
