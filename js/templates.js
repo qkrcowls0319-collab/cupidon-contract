@@ -173,7 +173,7 @@ function optionAmount(product, code) {
   return resolveOptionAmount(product, code);
 }
 
-// 옵션 코드 → 계약서 표시 라벨 (스냅/축의대/번들 모두 커버)
+// 옵션 코드 → 계약서 표시 라벨 (스냅/축의대/패키지 모두 커버)
 const OPTION_LABEL = {
   finalPlus5: '최종본 5장',
   colorPlus10: '색보정 10장',
@@ -181,15 +181,14 @@ const OPTION_LABEL = {
   part2Half: '2부 촬영(30분)',
   pyebaek: '폐백 촬영',
   vintageDigicam: '빈티지 디카',
-  chukuidae1: '축의대 1인 1팀 (번들)',
-  chukuidae2: '축의대 2인 1팀 (번들)',
-  chukuidae4: '축의대 4인 2팀 (번들)',
+  chukuidae1: '축의대 1인 1팀 (패키지 할인)',
+  chukuidae2: '축의대 2인 1팀 (패키지 할인)',
+  chukuidae4: '축의대 4인 2팀 (패키지 할인)',
   readyBag: '레디백',
   offlineLedger: '오프라인 장부',
-  thankyouSMS: '감사문자 발송',
   extraManager: '매니저 1인 추가',
-  snapSpecialBundle: '아이폰 스냅 스페셜 (번들)',
-  snapPremiumBundle: '아이폰 스냅 프리미엄 (번들)',
+  snapSpecialBundle: '아이폰 스냅 스페셜 (패키지 할인)',
+  snapPremiumBundle: '아이폰 스냅 프리미엄 (패키지 할인)',
 };
 
 // ================================================================
@@ -214,11 +213,6 @@ function renderContractHTML_chukuidae({ formData, quote, todayStr }) {
   const optionSection = optionLabels.length
     ? optionLabels.join('<br>')
     : '선택된 추가 옵션 없음';
-
-  // 감사문자 선택 시 후불 안내 노출
-  const smsPostBillingNote = formData.options.includes('thankyouSMS')
-    ? '<li style="margin:2px 0">감사문자 200명 초과 시, 초과분(50명당 +10,000원)은 예식 후 실 발송 인원 기준 <b>후불 청구</b>됩니다.</li>'
-    : '';
 
   const deliveryList = product.deliveryNote.map(t => `<li style="margin:2px 0">${t}</li>`).join('');
 
@@ -297,7 +291,7 @@ function renderContractHTML_chukuidae({ formData, quote, todayStr }) {
 
       <!-- 3. 서비스 진행 안내 -->
       <div style="font-family:${FONT};font-weight:700;font-size:12px;margin-bottom:4px">3. 서비스 진행 안내</div>
-      <ul style="font-family:${FONT};margin:0 0 10px 18px;padding:0;font-size:10.5px">${deliveryList}${smsPostBillingNote}</ul>
+      <ul style="font-family:${FONT};margin:0 0 10px 18px;padding:0;font-size:10.5px">${deliveryList}</ul>
 
       <!-- 동의문 -->
       <div style="font-family:${FONT};margin:10px 0;font-size:10.5px;line-height:1.6">
@@ -370,7 +364,7 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
   // 옵션들을 카테고리별로 분리
   const snapOwnCodes = ['finalPlus5', 'colorPlus10', 'part2', 'part2Half', 'pyebaek', 'vintageDigicam'];
-  const chukOwnCodes = ['readyBag', 'offlineLedger', 'thankyouSMS', 'extraManager'];
+  const chukOwnCodes = ['readyBag', 'offlineLedger', 'extraManager'];
   const snapExtraLabels = formData.options
     .filter(c => snapOwnCodes.includes(c))
     .map(c => `${OPTION_LABEL[c] || c} → +${priceStr(optionAmount(mainProduct, c))}`);
@@ -381,14 +375,9 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
   const snapExtraSection = snapExtraLabels.length ? snapExtraLabels.join('<br>') : '선택 옵션 없음';
   const chukExtraSection = chukExtraLabels.length ? chukExtraLabels.join('<br>') : '선택 옵션 없음';
 
-  // 번들가 라인 (주 상품에서 파트너 상품을 옵션으로 얹은 형태)
+  // 패키지 할인가 라인 (주 상품에서 파트너 상품을 옵션으로 얹은 형태)
   const bundleLineAmount = optionAmount(mainProduct, bundleOptionCode);
-  const bundlePartnerLine = `${partnerProduct.name} (번들가) → +${priceStr(bundleLineAmount)}`;
-
-  // 감사문자 후불 안내
-  const smsPostBillingNote = formData.options.includes('thankyouSMS')
-    ? '<li style="margin:2px 0">감사문자 200명 초과 시, 초과분(50명당 +10,000원)은 예식 후 실 발송 인원 기준 <b>후불 청구</b>됩니다.</li>'
-    : '';
+  const bundlePartnerLine = `${partnerProduct.name} (패키지 할인가) → +${priceStr(bundleLineAmount)}`;
 
   // 데이터 전달 · 서비스 진행 안내 (양쪽 노트 병합)
   const snapDelivery = snapProduct.deliveryNote.map(t => `<li style="margin:2px 0">${t}</li>`).join('');
@@ -422,12 +411,12 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
       <!-- 헤더 -->
       <div style="text-align:center;margin-bottom:12px">
-        <h1 style="font-family:${FONT};font-size:18px;margin:0;font-weight:700;letter-spacing:0.02em">큐피돈 스냅 × 축의대 번들 계약서</h1>
+        <h1 style="font-family:${FONT};font-size:18px;margin:0;font-weight:700;letter-spacing:0.02em">큐피돈 스냅 × 축의대 패키지 계약서</h1>
         <div style="font-family:${FONT};color:#555;font-size:10.5px;margin-top:3px">${subtitleLabel}</div>
       </div>
 
       <!-- 1. 상품 구성 (2행: 스냅 + 축의대) -->
-      <div style="font-family:${FONT};font-weight:700;font-size:11.5px;margin-bottom:4px">1. 상품 구성 (번들)</div>
+      <div style="font-family:${FONT};font-weight:700;font-size:11.5px;margin-bottom:4px">1. 상품 구성 (패키지)</div>
       <table style="width:100%;border-collapse:collapse;font-family:${FONT};font-size:10px;margin-bottom:8px">
         <thead>
           <tr style="background:#f4efe5">
@@ -465,7 +454,7 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
       <div style="font-family:${FONT};font-weight:700;font-size:11.5px;margin-bottom:3px">2. 결제 및 환불 안내</div>
       <ul style="font-family:${FONT};margin:0 0 8px 18px;padding:0;font-size:10px">
         <li style="margin:1.5px 0">잔금은 예식 7일 전까지 완납해주셔야 합니다.</li>
-        <li style="margin:1.5px 0">계약금은 <b>${priceStr(FIXED_DEPOSIT)} 입금</b>을 통해 예약이 확정됩니다 (스냅·축의대 공통).</li>
+        <li style="margin:1.5px 0">계약금은 <b>${priceStr(FIXED_DEPOSIT)} 입금</b>을 통해 예약이 확정됩니다 (패키지 공통).</li>
         <li style="margin:1.5px 0">예약 확정일 기준 14일 이내: 계약금 100% 환불 가능</li>
         <li style="margin:1.5px 0">예약 확정일 기준 14일 이후: 계약금 환불 불가</li>
         <li style="margin:1.5px 0">천재지변 등 불가피한 사유: 계약금 환불 가능 / 단순 변심·제3자 사유: 환불 불가</li>
@@ -478,11 +467,11 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
 
       <!-- 4. 서비스 진행 안내 (축의대) -->
       <div style="font-family:${FONT};font-weight:700;font-size:11.5px;margin-bottom:3px">4. 서비스 진행 안내 (축의대)</div>
-      <ul style="font-family:${FONT};margin:0 0 8px 18px;padding:0;font-size:10px">${chukDelivery}${smsPostBillingNote}</ul>
+      <ul style="font-family:${FONT};margin:0 0 8px 18px;padding:0;font-size:10px">${chukDelivery}</ul>
 
       <!-- 동의문 -->
       <div style="font-family:${FONT};margin:8px 0;font-size:10px;line-height:1.55">
-        큐피돈 스냅 × 축의대 번들 상품과 관련하여 상기 내용을 통해 촬영 상품 구성·축의대 서비스 구성·추가 요금·결제 및 환불·데이터 및 서비스 진행 규정에 대해 충분히 안내받았으며, 이에 동의합니다.
+        큐피돈 스냅 × 축의대 패키지 상품과 관련하여 상기 내용을 통해 촬영 상품 구성·축의대 서비스 구성·추가 요금·결제 및 환불·데이터 및 서비스 진행 규정에 대해 충분히 안내받았으며, 이에 동의합니다.
       </div>
 
       <!-- 계약 금액 박스 -->
@@ -494,7 +483,7 @@ function renderContractHTML_bundle({ formData, quote, todayStr }) {
         </div>
         ${travelNote}
         ${promiseSection}
-        <div style="font-family:${FONT};margin-top:4px;font-size:10px"><b>용역 공급자:</b> 큐피돈 스냅 (스냅 × 더체크 축의대 번들)</div>
+        <div style="font-family:${FONT};margin-top:4px;font-size:10px"><b>용역 공급자:</b> 큐피돈 스냅 (스냅 × 더체크 축의대 패키지)</div>
       </div>
 
       <!-- 계약자 정보 -->

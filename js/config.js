@@ -218,9 +218,9 @@ export const OPTIONS_WEDDING = {
   part2: { name: '2부 촬영 추가', amount: 70000 },
   pyebaek: { name: '폐백 촬영 추가', amount: 50000 },
   vintageDigicam: { name: '빈티지 디카', amount: 50000 },
-  chukuidae1: { name: '축의대 1인 1팀 (베이직 · 스냅 번들가 5%↓)', amount: 332500 },
-  chukuidae2: { name: '축의대 2인 1팀 (스탠다드 · 스냅 번들가 5%↓)', amount: 427500 },
-  chukuidae4: { name: '축의대 4인 2팀 (프리미엄 · 스냅 번들가 5%↓)', amount: 760000 },
+  chukuidae1: { name: '축의대 1인 1팀 (베이직 · 패키지 할인가 5%↓)', amount: 332500 },
+  chukuidae2: { name: '축의대 2인 1팀 (스탠다드 · 패키지 할인가 5%↓)', amount: 427500 },
+  chukuidae4: { name: '축의대 4인 2팀 (프리미엄 · 패키지 할인가 5%↓)', amount: 760000 },
 };
 
 // 스냅 - 스튜디오·돌
@@ -231,29 +231,25 @@ export const OPTIONS_STUDIO_DOL = {
 };
 
 // 축의대 전용 옵션
-// - 감사문자: 200명 이하 기준가. 초과분은 예식 후 후불 청구 (실제 발송 인원 기준 50명당 +10,000)
-// - snapSpecialBundle / snapPremiumBundle: 축의대 상품에 스냅을 번들로 얹는 옵션.
+// - snapSpecialBundle / snapPremiumBundle: 축의대 상품에 스냅을 패키지로 얹는 옵션.
 //   amount는 상수 대신 pricing.js의 resolveOptionAmount()에서 주 상품(축의대 등급)에 따라 동적 계산.
 export const OPTIONS_CHUKUIDAE = {
   readyBag: { name: '레디백', amount: 10000 },
   offlineLedger: { name: '오프라인 장부 (양가 혼주용, 1팀 기준)', amount: 30000 },
-  thankyouSMS: { name: '감사문자 발송 서비스 (200명 이하 기준 · 초과분 후불 청구)', amount: 30000 },
   extraManager: { name: '매니저 1인 추가', amount: 180000 },
-  snapSpecialBundle: { name: '아이폰 스냅 스페셜 번들 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
-  snapPremiumBundle: { name: '아이폰 스냅 프리미엄 번들 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
+  snapSpecialBundle: { name: '아이폰 스냅 스페셜 패키지 할인 (1인)', dynamic: 'snapBundle', snapCode: 'special' },
+  snapPremiumBundle: { name: '아이폰 스냅 프리미엄 패키지 할인 (2인)', dynamic: 'snapBundle', snapCode: 'premium' },
 };
 
 // ============================
-// 번들 할인 (스냅 ⇄ 축의대 대칭성)
+// 패키지 할인 (스냅 ⇄ 축의대 대칭성)
 // ============================
-// 스냅 상품 + 축의대 번들 옵션(chukuidae2/4) → OPTIONS_WEDDING의 amount로 이미 -70k/-120k 반영됨
-//   chukuidae2 = 450k(축의대 스탠다드) - 70k = 380k
-//   chukuidae4 = 800k(축의대 프리미엄) - 120k = 680k
-// 축의대 상품 + 스냅 번들 옵션(snapSpecial/Premium) → 같은 규칙으로 대칭 계산:
+// 스냅 상품 + 축의대 패키지 옵션(chukuidae1/2/4) → OPTIONS_WEDDING의 amount로 반영
+// 축의대 상품 + 스냅 패키지 옵션(snapSpecial/Premium) → 같은 규칙으로 대칭 계산:
 //   snapSpecialBundle amount = 350k(스냅 스페셜) - BUNDLE_DISCOUNTS[주상품]
 //   snapPremiumBundle amount = 550k(스냅 프리미엄) - BUNDLE_DISCOUNTS[주상품]
 // 어느 쪽에서 시작하든 총액이 동일해집니다.
-// 번들 할인 = 축의대 정가의 5% (패키지 할인율 통일)
+// 패키지 할인 = 축의대 정가의 5% (대칭 통일)
 export const BUNDLE_DISCOUNTS = {
   chukuidaeBasic: 17500,   // 350k × 5%
   chukuidaeStd: 22500,     // 450k × 5%

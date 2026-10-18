@@ -235,14 +235,14 @@ test('번들 시 스냅 할인 테이블 사용 (축의대 상품에서 시작�
   assertEqual(result.promiseTotal, -20000, 'promise total (블로그 + 큐피돈)');
 });
 
-test('번들에 축의대 옵션(readyBag, thankyouSMS)도 추가 가능', () => {
+test('패키지에 축의대 옵션(readyBag, offlineLedger)도 추가 가능', () => {
   const fromSnap = calculateQuote({
     product: 'premium', region: 'seoul',
-    options: ['chukuidae4', 'readyBag', 'thankyouSMS'],
+    options: ['chukuidae4', 'readyBag', 'offlineLedger'],
     immediateDiscounts: [], promiseDiscounts: [], dolHasMainSnap: null,
   });
   // 550 + 760 + 10 + 30 = 1350
-  assertEqual(fromSnap.total, 1350000, '스냅 번들 + 축의대 세부 옵션');
+  assertEqual(fromSnap.total, 1350000, '스냅 패키지 + 축의대 세부 옵션');
 });
 
 test('번들에 스냅 옵션(폐백, 색보정)도 추가 가능', () => {

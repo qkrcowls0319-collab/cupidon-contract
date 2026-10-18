@@ -438,23 +438,23 @@ registerRenderer(4, s => {
       </label>`;
   };
 
-  // 옵션을 "본상품 옵션"과 "번들 상대편 옵션"으로 분리
-  const isChukuidaeOptCode = code => ['readyBag', 'offlineLedger', 'thankyouSMS', 'extraManager'].includes(code);
+  // 옵션을 "본상품 옵션"과 "패키지 할인 시 상대편 옵션"으로 분리
+  const isChukuidaeOptCode = code => ['readyBag', 'offlineLedger', 'extraManager'].includes(code);
   const isSnapBundleCode = code => ['snapSpecialBundle', 'snapPremiumBundle'].includes(code);
   const isChukuidaeBundleCode = code => ['chukuidae1', 'chukuidae2', 'chukuidae4'].includes(code);
 
   const entries = Object.entries(optionsTable);
   let ownGroup, otherGroup, otherGroupTitle;
   if (product.category === 'snap') {
-    // 스냅 본 옵션 = chukuidae2/4 포함 (번들 트리거); 번들 활성 시 축의대 순수 옵션 별도 그룹
+    // 스냅 본 옵션 = chukuidae1/2/4 포함 (패키지 트리거); 활성 시 축의대 순수 옵션 별도 그룹
     ownGroup = entries.filter(([c]) => !isChukuidaeOptCode(c));
     otherGroup = entries.filter(([c]) => isChukuidaeOptCode(c));
-    otherGroupTitle = '축의대 추가 옵션 (번들 시)';
+    otherGroupTitle = '축의대 추가 옵션 (패키지 할인 시)';
   } else {
-    // 축의대 본 옵션 = readyBag/offlineLedger/thankyouSMS + snap 번들 트리거
+    // 축의대 본 옵션 = readyBag/offlineLedger/extraManager + snap 패키지 트리거
     ownGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeBundleCode(c) || isSnapBundleCode(c));
     otherGroup = entries.filter(([c]) => !isSnapBundleCode(c) && !isChukuidaeOptCode(c));
-    otherGroupTitle = '스냅 추가 옵션 (번들 시)';
+    otherGroupTitle = '스냅 추가 옵션 (패키지 할인 시)';
   }
 
   const ownHtml = ownGroup.map(renderOpt).join('');
@@ -463,7 +463,7 @@ registerRenderer(4, s => {
     : '';
 
   const bundleNote = bundleActive
-    ? '<div class="info-box" style="margin-top:12px">✨ 스냅 ⇄ 축의대 번들 조합이 적용됩니다. 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</div>'
+    ? '<div class="info-box" style="margin-top:12px">✨ 스냅 ⇄ 축의대 패키지 할인이 적용됩니다. 어느 쪽에서 시작해도 최종 금액이 동일하도록 계산됩니다.</div>'
     : '';
 
   // 돌스냅 아이폰 단독 여부 (돌스냅에만 노출)
@@ -514,8 +514,14 @@ registerRenderer(5, s => {
   const immediateTable = getImmediateDiscounts(product, s.data.options);
   const promiseTable = getPromiseDiscounts(product, s.data.options);
 
+  // 패키지 할인(bundle) 컨텍스트에서는 얹힌 스냅 상품 코드도 appliesTo 검사에 포함.
+  // 예: 축의대 주 + 스냅 스페셜 패키지 → partner(스페셜 전용) 할인 노출.
+  const effectiveProductCodes = [s.data.product];
+  if (s.data.options.includes('snapSpecialBundle')) effectiveProductCodes.push('special');
+  if (s.data.options.includes('snapPremiumBundle')) effectiveProductCodes.push('premium');
+
   const immediate = Object.entries(immediateTable).map(([code, d]) => {
-    if (d.appliesTo && d.appliesTo !== 'all' && !d.appliesTo.includes(s.data.product)) return '';
+    if (d.appliesTo && d.appliesTo !== 'all' && !effectiveProductCodes.some(p => d.appliesTo.includes(p))) return '';
     const checked = s.data.immediateDiscounts.includes(code) ? 'checked' : '';
     const cls = s.data.immediateDiscounts.includes(code) ? 'selected' : '';
     return `
@@ -537,8 +543,9 @@ registerRenderer(5, s => {
       </label>`;
   }).join('');
 
-  // 짝꿍코드는 스냅 상품 전용 (축의대엔 없음)
-  const partnerField = s.data.immediateDiscounts.includes('partner') && product?.category === 'snap'
+  // 짝꿍코드는 스냅 상품 또는 스냅 패키지 할인(bundle) 적용 시 노출
+  const partnerEligible = product?.category === 'snap' || isBundle(product, s.data.options);
+  const partnerField = s.data.immediateDiscounts.includes('partner') && partnerEligible
     ? `
       <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
         <label>짝꿍코드 * (필수 입력)</label>
@@ -897,7 +904,7 @@ function buildKakaoMessage() {
 
   const regionLabel = travelTable[d.region]?.name || TRAVEL_FEE[d.region]?.name || d.region;
   const categoryLabel = quote.isBundle
-    ? '스냅+축의대 번들'
+    ? '스냅+축의대 패키지'
     : product?.category === 'chukuidae' ? '축의대' : '스냅';
 
   // 상품 + 옵션 (인라인)
@@ -1017,7 +1024,7 @@ async function sendToGoogleSheets(data, quote, pdfBase64, pdfFilename) {
     region: travelTable[data.region]?.name || TRAVEL_FEE[data.region]?.name || data.region,
     customTravelFee: data.region === 'other' && data.customTravelFee ? Number(data.customTravelFee) : '',
     category: quote.isBundle
-      ? '스냅+축의대 번들'
+      ? '스냅+축의대 패키지'
       : (product?.category === 'chukuidae' ? '축의대' : '스냅'),
     product: product?.name || data.product,
     options: optionNames,
