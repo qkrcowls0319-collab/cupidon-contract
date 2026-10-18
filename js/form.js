@@ -45,14 +45,21 @@ const DEFAULT_DATA = {
   submissionId: '',     // 고유 제출 ID (서버측 중복 검증용)
 };
 
-// 짝꿍코드 생성 (CP + 6자리 대문자 영숫자, 혼동 문자 제외)
+// 짝꿍코드 생성 (CP + 2 영문 + 6자리 숫자)
+// 매칭은 뒤쪽 숫자만 비교하므로 숫자 6자리가 실질 고유 식별자 (10^6 = 100만 조합)
 function generatePartnerCode() {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 0/O/1/I/L 제외
+  const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ'; // O/I/L 제외
   let code = 'CP';
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
+  for (let i = 0; i < 2; i++) code += letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 0; i < 6; i++) code += Math.floor(Math.random() * 10);
+  return code; // e.g., CPAB123456
+}
+
+// 코드에서 숫자만 추출 (매칭용) — 뒤쪽 연속 숫자 그룹 반환
+// 예: 'KHR2026' → '2026', 'khr-2026' → '2026', 'CPAB123456' → '123456', '2026' → '2026'
+function extractCodeDigits(code) {
+  const m = String(code || '').trim().match(/(\d+)\s*$/);
+  return m ? m[1] : '';
 }
 
 // 짝꿍코드 사용 횟수 조회 (GAS doGet 호출)
@@ -656,10 +663,10 @@ registerRenderer(5, s => {
     ? `
       <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
         <label>짝꿍코드 * (필수 입력)</label>
-        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: CPX3K2A4" id="partner-code-input" autocomplete="off" style="text-transform:uppercase">
+        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: CPAB123456" id="partner-code-input" autocomplete="off" style="text-transform:uppercase">
         <div id="partner-check-feedback">${partnerStatusLine}</div>
         ${s.errors.partnerCode ? `<div class="error">${s.errors.partnerCode}</div>` : ''}
-        <div style="margin-top:4px;font-size:11px;color:#8a6d3b">💡 짝꿍코드는 최대 2회까지 사용 가능합니다 (3번째부터 자동 만료)</div>
+        <div style="margin-top:4px;font-size:11px;color:#8a6d3b">💡 짝꿍코드는 최대 2회까지 사용 가능합니다 (3번째부터 자동 만료 · 대소문자/영문 상관없음)</div>
       </div>`
     : '';
 
