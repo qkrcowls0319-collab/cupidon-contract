@@ -45,18 +45,44 @@ const DEFAULT_DATA = {
   submissionId: '',     // 고유 제출 ID (서버측 중복 검증용)
 };
 
-// 짝꿍코드 생성 (CP + 2 영문 + 6자리 숫자)
-// 매칭은 뒤쪽 숫자만 비교하므로 숫자 6자리가 실질 고유 식별자 (10^6 = 100만 조합)
-function generatePartnerCode() {
-  const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ'; // O/I/L 제외
-  let code = 'CP';
-  for (let i = 0; i < 2; i++) code += letters[Math.floor(Math.random() * letters.length)];
-  for (let i = 0; i < 6; i++) code += Math.floor(Math.random() * 10);
-  return code; // e.g., CPAB123456
+// 짝꿍코드 생성 — 포맷: Cupid{YYMMDD-예식일}{N}
+// 예: 예식 2026-11-15 → Cupid261115 + 순번(1,2,3...) → Cupid2611151
+// N은 서버(GAS)에서 같은 예식일의 기존 코드 최대 번호 + 1로 할당 (완전 대칭).
+// 서버 조회 실패 시 fallback: 100~999 랜덤 (충돌 가능하지만 저빈도에서 허용).
+async function fetchIssuedPartnerCode(eventDate) {
+  if (!eventDate || !/^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
+    return generatePartnerCodeFallback(null);
+  }
+  const url = `${SHEETS_WEBHOOK_URLS.snap}?action=generateCode&date=${encodeURIComponent(eventDate.slice(0,10))}`;
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.code) return data.code;
+    throw new Error(data.error || 'no code returned');
+  } catch (e) {
+    console.warn('짝꿍코드 서버 생성 실패, fallback 사용:', e);
+    return generatePartnerCodeFallback(eventDate);
+  }
+}
+
+function generatePartnerCodeFallback(eventDate) {
+  let d;
+  if (eventDate && /^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
+    const [y, m, day] = eventDate.slice(0, 10).split('-');
+    d = y.slice(2) + m + day;
+  } else {
+    const now = new Date();
+    d = String(now.getFullYear()).slice(2)
+      + String(now.getMonth() + 1).padStart(2, '0')
+      + String(now.getDate()).padStart(2, '0');
+  }
+  const suffix = Math.floor(Math.random() * 900 + 100); // 100~999
+  return `Cupid${d}${suffix}`;
 }
 
 // 코드에서 숫자만 추출 (매칭용) — 뒤쪽 연속 숫자 그룹 반환
-// 예: 'KHR2026' → '2026', 'khr-2026' → '2026', 'CPAB123456' → '123456', '2026' → '2026'
+// 예: 'KHR2026' → '2026', 'cupid2611151' → '2611151', 'Cupid26111510' → '26111510'
 function extractCodeDigits(code) {
   const m = String(code || '').trim().match(/(\d+)\s*$/);
   return m ? m[1] : '';
@@ -663,10 +689,10 @@ registerRenderer(5, s => {
     ? `
       <div class="field ${s.errors.partnerCode ? 'has-error' : ''}" style="margin-top:12px;padding:12px;background:#f4efe5;border-radius:8px">
         <label>짝꿍코드 * (필수 입력)</label>
-        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: CPAB123456" id="partner-code-input" autocomplete="off" style="text-transform:uppercase">
+        <input type="text" data-bind="partnerCode" value="${escapeAttr(s.data.partnerCode)}" placeholder="예: Cupid2611151" id="partner-code-input" autocomplete="off">
         <div id="partner-check-feedback">${partnerStatusLine}</div>
         ${s.errors.partnerCode ? `<div class="error">${s.errors.partnerCode}</div>` : ''}
-        <div style="margin-top:4px;font-size:11px;color:#8a6d3b">💡 짝꿍코드는 최대 2회까지 사용 가능합니다 (3번째부터 자동 만료 · 대소문자/영문 상관없음)</div>
+        <div style="margin-top:4px;font-size:11px;color:#8a6d3b">💡 짝꿍코드는 최대 2회까지 사용 가능합니다 (3번째부터 자동 만료 · 대소문자/영문 상관없이 뒤쪽 숫자만 매칭)</div>
       </div>`
     : '';
 
@@ -1242,12 +1268,13 @@ async function submitContract() {
       if (!state.data.submissionId) {
         state.data.submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
       }
-      // 이 고객에게 발급할 짝꿍코드 생성 (최초 1회)
+      // 이 고객에게 발급할 짝꿍코드 생성 (최초 1회, 예식일 기준 순번)
       if (!state.data.issuedPartnerCode) {
-        state.data.issuedPartnerCode = generatePartnerCode();
+        state.data.issuedPartnerCode = await fetchIssuedPartnerCode(state.data.eventDate);
       }
       state.data.submittedAt = new Date().toISOString();
       saveSession();
+      render(); // 발급 코드 반영된 성공 화면 다시 그리기
 
       sendToGoogleSheets(state.data, result.quote, result.base64, result.filename).catch(err =>
         console.warn('Sheets 저장 실패:', err)

@@ -21,63 +21,76 @@
 
 Apps Script 편집기(`확장 → Apps Script`)에서 아래 두 함수를 **기존 `doPost` 외에 추가**하세요.
 
-### 2-1. `doGet` — 짝꿍코드 조회 엔드포인트 (신규)
+### 2-1. `doGet` — 조회(checkPartner) + 발급(generateCode) (신규)
 
 ```javascript
 function doGet(e) {
   const action = e.parameter.action;
-
-  if (action === 'checkPartner') {
-    return checkPartnerCode(e.parameter.code);
-  }
-
-  return jsonResponse({ error: 'unknown action' });
+  if (action === 'checkPartner') return checkPartner_(e.parameter.code);
+  if (action === 'generateCode') return generateCode_(e.parameter.date);
+  return jsonResp({ error: 'unknown action' });
 }
 
-function checkPartnerCode(rawCode) {
-  // 뒤쪽 숫자만 추출해서 매칭 (영문/대소문자/공백 무시)
-  // 예: 'KHR2026' → '2026', 'cpab123456' → '123456', '2026' → '2026'
+// 뒤쪽 숫자만 추출해서 매칭 (영문/대소문자/공백 무시)
+// 예: 'KHR2026' → '2026', 'cupid2611151' → '2611151', '2611151' → '2611151'
+function checkPartner_(rawCode) {
   const codeDigits = extractDigits(rawCode);
-  if (!codeDigits) return jsonResponse({ error: 'no digits in code' });
+  if (!codeDigits) return jsonResp({ error: 'no digits in code' });
 
-  // ⚠ 시트 이름이 다르면 이 부분을 바꿔주세요 (예: '즉시할인', '신청이력' 등)
-  const SHEET_NAME = '스냅';
-
+  const SHEET_NAME = '스냅';  // ⚠ 시트 이름이 다르면 변경
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
-  if (!sheet) return jsonResponse({ error: 'sheet not found: ' + SHEET_NAME });
+  if (!sheet) return jsonResp({ error: 'sheet not found: ' + SHEET_NAME });
 
   const data = sheet.getDataRange().getValues();
-  if (data.length < 2) {
-    return jsonResponse({ code: rawCode, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
-  }
+  if (data.length < 2) return jsonResp({ code: rawCode, codeDigits, usedCount: 0, status: 'valid', remaining: 2 });
 
-  const header = data[0];
-  // "짝꿍코드" 컬럼 자동 탐색 (헤더 정확히 일치해야 함)
-  const idx = header.indexOf('짝꿍코드');
-  if (idx === -1) {
-    return jsonResponse({ error: "'짝꿍코드' 컬럼이 없습니다 (헤더 확인 필요)" });
-  }
+  const idx = data[0].indexOf('짝꿍코드');
+  if (idx === -1) return jsonResp({ error: "'짝꿍코드' 컬럼이 없습니다 (헤더 확인 필요)" });
 
   const usedCount = data.slice(1).filter(function(row) {
     return extractDigits(row[idx]) === codeDigits;
   }).length;
 
-  return jsonResponse({
-    code: rawCode,
-    codeDigits,
-    usedCount,
+  return jsonResp({
+    code: rawCode, codeDigits, usedCount,
     status: usedCount >= 2 ? 'expired' : 'valid',
     remaining: Math.max(0, 2 - usedCount),
   });
 }
 
-// 뒤쪽 연속 숫자 그룹만 추출 ('KHR2026 ' → '2026')
+// 짝꿍코드 발급: Cupid{YYMMDD-예식일}{N}, N은 같은 예식일 기존 최대번호 + 1
+// 예: 예식 2026-11-15 → Cupid2611151, Cupid2611152, Cupid2611153...
+function generateCode_(rawDate) {
+  if (!rawDate || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return jsonResp({ error: 'invalid date format (expected YYYY-MM-DD)' });
+  }
+  const parts = rawDate.split('-');
+  const dateDigits = parts[0].slice(2) + parts[1] + parts[2];
+  const prefix = 'Cupid' + dateDigits;
+
+  const SHEET_NAME = '스냅';
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  const header = data[0];
+  const issuedIdx = header.indexOf('발급 짝꿍코드');
+  if (issuedIdx === -1) return jsonResp({ error: "'발급 짝꿍코드' 컬럼이 없습니다" });
+
+  const existingNs = data.slice(1)
+    .map(function(r) { return String(r[issuedIdx] || '').trim(); })
+    .filter(function(c) { return c.toLowerCase().indexOf(prefix.toLowerCase()) === 0; })
+    .map(function(c) { return parseInt(c.substring(prefix.length), 10); })
+    .filter(function(n) { return !isNaN(n); });
+  const nextN = existingNs.length ? Math.max.apply(null, existingNs) + 1 : 1;
+
+  return jsonResp({ code: prefix + nextN, prefix: prefix, nextN: nextN });
+}
+
 function extractDigits(raw) {
   const m = String(raw || '').trim().match(/(\d+)\s*$/);
   return m ? m[1] : '';
 }
 
-function jsonResponse(obj) {
+function jsonResp(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
