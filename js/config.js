@@ -300,5 +300,11 @@ export const SHEETS_WEBHOOK_URLS = {
   chukuidae: 'https://script.google.com/macros/s/AKfycbzEFssrdZk6TTGhXmTXNbFmax4C5dQq7ai6625vUmOUcX7O6DYUds9DCA0T4Clw0Ma8KA/exec', // 스냅 시트에 같이 기록 (패키지 상품 대응)
 };
 
+// D-7 설문 전용 webhook URL (완전 별개 시트 · Apps Script)
+// 설문 응답 시트: https://docs.google.com/spreadsheets/d/1NHAyIKwaXR3asTHdiLCs7C4Ss5VG_dAB-EmRxVm2QRI
+// 세팅 가이드: docs/SURVEY_D7_SETUP.md
+// 비어있으면 설문 제출 시 네트워크 실패 처리됨
+export const SURVEY_WEBHOOK_URL = '';
+
 // 하위 호환 (기존 코드가 아직 import 하고 있으면 스냅 URL을 반환)
 export const SHEETS_WEBHOOK_URL = SHEETS_WEBHOOK_URLS.snap;
