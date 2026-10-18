@@ -17,10 +17,10 @@ const DEFAULT_DATA = {
   eventDate: '',
   venue: '',
   hall: '',
-  // Step 3 — 하객·식사
-  guestCount: '',
-  mealType: '',         // 'buffet' | 'course' | 'hansang' | 'other'
-  mealTypeOther: '',
+  // Step 3 — 하객·식권
+  guestCountGroom: '',
+  guestCountBride: '',
+  slipProvided: '',     // 'yes' | 'no'
   // Step 4 — 예식장 위치 (ATM만)
   atmLocation: '',
   // Step 5 — 축의금·식권·자물쇠
@@ -228,33 +228,37 @@ registerStep(2, '예식 기본 정보', s => `
   }
 });
 
-// Step 3 — 하객·식사
-registerStep(3, '하객·식사', s => {
-  const meals = [
-    { v: 'buffet', label: '뷔페' },
-    { v: 'course', label: '코스' },
-    { v: 'hansang', label: '한상차림' },
-    { v: 'other', label: '기타' },
+// Step 3 — 하객·식권
+registerStep(3, '하객·식권', s => {
+  const slipOptions = [
+    { v: 'yes', label: '지급함' },
+    { v: 'no', label: '지급 안 함' },
   ];
   return `
     <div class="card">
-      <h2>3. 하객·식사</h2>
+      <h2>3. 하객·식권</h2>
       <div class="field">
         <label>예상 하객수</label>
-        <input type="number" min="0" data-bind="guestCount" value="${escapeAttr(s.data.guestCount)}" placeholder="예: 250" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:12px;color:#6B5B4E;margin-bottom:4px">신랑측</div>
+            <input type="number" min="0" data-bind="guestCountGroom" value="${escapeAttr(s.data.guestCountGroom)}" placeholder="예: 150" />
+          </div>
+          <div>
+            <div style="font-size:12px;color:#6B5B4E;margin-bottom:4px">신부측</div>
+            <input type="number" min="0" data-bind="guestCountBride" value="${escapeAttr(s.data.guestCountBride)}" placeholder="예: 100" />
+          </div>
+        </div>
       </div>
       <div class="field">
-        <label>식사 형태</label>
+        <label>식권 지급 여부</label>
         <div class="radio-group">
-          ${meals.map(m => `
-            <label class="radio-option ${s.data.mealType === m.v ? 'selected' : ''}">
-              <input type="radio" name="mealType" data-bind="mealType" value="${m.v}" ${s.data.mealType === m.v ? 'checked' : ''}>
-              <span>${m.label}</span>
+          ${slipOptions.map(o => `
+            <label class="radio-option ${s.data.slipProvided === o.v ? 'selected' : ''}">
+              <input type="radio" name="slipProvided" data-bind="slipProvided" value="${o.v}" ${s.data.slipProvided === o.v ? 'checked' : ''}>
+              <span>${o.label}</span>
             </label>`).join('')}
         </div>
-        ${s.data.mealType === 'other' ? `
-          <input type="text" data-bind="mealTypeOther" value="${escapeAttr(s.data.mealTypeOther)}" placeholder="기타 식사 형태" style="margin-top:8px">
-        ` : ''}
       </div>
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
@@ -649,7 +653,7 @@ async function submitSurvey() {
 
   const PRODUCT_LABEL = { basic: '1인 1팀 베이직', std: '2인 1팀 스탠다드', premium: '4인 2팀 프리미엄' };
   const SIDE_LABEL = { groom: '신랑측', bride: '신부측', both: '양측' };
-  const MEAL_LABEL = { buffet: '뷔페', course: '코스', hansang: '한상차림', other: '기타' };
+  const SLIP_LABEL = { yes: '지급함', no: '지급 안 함' };
   const READY_LABEL = { self: '직접 준비함', cupidon: '큐피돈 준비 요청' };
   const POLICY_LABEL = { agree: '동의합니다', need_discussion: '별도 협의 필요' };
   const LOCK_LABEL = { self: '직접 준비', cupidon: '큐피돈 준비 요청', couple_prepare: '신랑·신부측에서 직접 준비' };
@@ -668,8 +672,13 @@ async function submitSurvey() {
     eventDate: d.eventDate,
     venue: d.venue,
     hall: d.hall,
-    guestCount: d.guestCount,
-    mealType: (MEAL_LABEL[d.mealType] || d.mealType) + (d.mealType === 'other' && d.mealTypeOther ? ` (${d.mealTypeOther})` : ''),
+    // 신랑측/신부측 합쳐서 GAS 기존 '예상하객수' 컬럼에 저장 ("신랑 150 / 신부 100" 형식)
+    guestCount: [
+      d.guestCountGroom ? `신랑 ${d.guestCountGroom}` : '',
+      d.guestCountBride ? `신부 ${d.guestCountBride}` : '',
+    ].filter(Boolean).join(' / '),
+    // GAS 기존 '식사형태' 컬럼을 '식권지급여부'로 재사용 (사장님이 컬럼명만 바꾸시면 됨)
+    mealType: SLIP_LABEL[d.slipProvided] || d.slipProvided,
     atmLocation: d.atmLocation,
     readyBag: READY_LABEL[d.readyBag] || d.readyBag,
     policy5m: POLICY_LABEL[d.policy5m] || d.policy5m,
