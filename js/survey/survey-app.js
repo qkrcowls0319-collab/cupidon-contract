@@ -27,10 +27,9 @@ const DEFAULT_DATA = {
   readyBag: '',         // 'self' | 'cupidon'
   policy5m: '',         // 'agree' | 'need_discussion'
   slipManager: '',
-  slipManagerPhone: '',
   slipTotal: '',
   bankAccount: '',
-  lockType: '',         // 'self' | 'cupidon' | 'couple_prepare'
+  lockType: '',         // 'self' | 'cupidon'
   // Step 6 — 인수인계자
   handover1Name: '',
   handover1Phone: '',
@@ -119,10 +118,23 @@ function validateStep(step, d) {
       if (!d.eventDate) errors.eventDate = '예식일을 선택해주세요.';
       if (!d.venue?.trim()) errors.venue = '예식장 이름을 입력해주세요.';
       break;
+    case 3:
+      if (!String(d.guestCountGroom || '').trim() && !String(d.guestCountBride || '').trim()) {
+        errors.guestCount = '신랑측 또는 신부측 예상 하객수를 입력해주세요.';
+      }
+      if (!d.slipProvided) errors.slipProvided = '식권 지급 여부를 선택해주세요.';
+      break;
     case 5:
       if (!d.readyBag) errors.readyBag = '레디백 준비 여부를 선택해주세요.';
       if (!d.policy5m) errors.policy5m = '5만원 미만 정책 동의 여부를 선택해주세요.';
       if (!d.lockType) errors.lockType = '자물쇠 방식을 선택해주세요.';
+      break;
+    case 6:
+      if (!d.handover1Name?.trim()) errors.handover1Name = '인수인계자 이름을 입력해주세요.';
+      if (!d.handover1Phone?.trim()) errors.handover1Phone = '인수인계자 연락처를 입력해주세요.';
+      else if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(d.handover1Phone.replace(/\s/g, ''))) {
+        errors.handover1Phone = '올바른 전화번호 형식이 아닙니다.';
+      }
       break;
     case 8:
       if (!d.linkDeliveryMethod) errors.linkDeliveryMethod = '링크 전달 방식을 선택해주세요.';
@@ -239,8 +251,8 @@ registerStep(3, '하객·식권', s => {
   return `
     <div class="card">
       <h2>3. 하객·식권</h2>
-      <div class="field">
-        <label>예상 하객수</label>
+      <div class="field ${s.errors.guestCount ? 'has-error' : ''}">
+        <label>예상 하객수 *</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
             <div style="font-size:12px;color:#6B5B4E;margin-bottom:4px">신랑측</div>
@@ -251,9 +263,10 @@ registerStep(3, '하객·식권', s => {
             <input type="number" min="0" data-bind="guestCountBride" value="${escapeAttr(s.data.guestCountBride)}" placeholder="예: 100" />
           </div>
         </div>
+        ${s.errors.guestCount ? `<div class="error">${s.errors.guestCount}</div>` : ''}
       </div>
-      <div class="field">
-        <label>식권 지급 여부</label>
+      <div class="field ${s.errors.slipProvided ? 'has-error' : ''}">
+        <label>식권 지급 여부 *</label>
         <div class="radio-group">
           ${slipOptions.map(o => `
             <label class="radio-option ${s.data.slipProvided === o.v ? 'selected' : ''}">
@@ -261,6 +274,7 @@ registerStep(3, '하객·식권', s => {
               <span>${o.label}</span>
             </label>`).join('')}
         </div>
+        ${s.errors.slipProvided ? `<div class="error">${s.errors.slipProvided}</div>` : ''}
       </div>
       <div class="actions">
         <button class="btn btn-secondary" data-action="prev">이전</button>
@@ -297,7 +311,6 @@ registerStep(5, '축의금·식권·자물쇠', s => {
   const lockOptions = [
     { v: 'self', label: '직접 준비' },
     { v: 'cupidon', label: '큐피돈 준비 요청' },
-    { v: 'couple_prepare', label: '신랑·신부측에서 직접 준비' },
   ];
   return `
     <div class="card">
@@ -340,10 +353,6 @@ registerStep(5, '축의금·식권·자물쇠', s => {
         <input type="text" data-bind="slipManager" value="${escapeAttr(s.data.slipManager)}" placeholder="예: 신부측 이모 홍길동" />
       </div>
       <div class="field">
-        <label>신부대기실 관리자 연락처</label>
-        <input type="tel" data-bind="slipManagerPhone" value="${escapeAttr(s.data.slipManagerPhone)}" placeholder="010-0000-0000" />
-      </div>
-      <div class="field">
         <label>예식장 식권 총매수</label>
         <input type="number" min="0" data-bind="slipTotal" value="${escapeAttr(s.data.slipTotal)}" placeholder="예: 250" />
       </div>
@@ -379,14 +388,16 @@ registerStep(6, '인수인계자', s => `
       예식 종료 후 축의금 봉투·명단·정산 리포트를 전달받으실 분(들)의 정보를 입력해주세요.
     </p>
 
-    <h3 style="margin-top:12px">① 1인</h3>
-    <div class="field">
-      <label>이름</label>
+    <h3 style="margin-top:12px">① 1인 *</h3>
+    <div class="field ${s.errors.handover1Name ? 'has-error' : ''}">
+      <label>이름 *</label>
       <input type="text" data-bind="handover1Name" value="${escapeAttr(s.data.handover1Name)}" placeholder="예: 신랑측 삼촌 김홍길" />
+      ${s.errors.handover1Name ? `<div class="error">${s.errors.handover1Name}</div>` : ''}
     </div>
-    <div class="field">
-      <label>연락처</label>
+    <div class="field ${s.errors.handover1Phone ? 'has-error' : ''}">
+      <label>연락처 *</label>
       <input type="tel" data-bind="handover1Phone" value="${escapeAttr(s.data.handover1Phone)}" placeholder="010-0000-0000" />
+      ${s.errors.handover1Phone ? `<div class="error">${s.errors.handover1Phone}</div>` : ''}
     </div>
 
     <h3 style="margin-top:12px">② 2인 (선택)</h3>
@@ -658,7 +669,7 @@ async function submitSurvey() {
   const SLIP_LABEL = { yes: '지급함', no: '지급 안 함' };
   const READY_LABEL = { self: '직접 준비함', cupidon: '큐피돈 준비 요청' };
   const POLICY_LABEL = { agree: '동의합니다', need_discussion: '별도 협의 필요' };
-  const LOCK_LABEL = { self: '직접 준비', cupidon: '큐피돈 준비 요청', couple_prepare: '신랑·신부측에서 직접 준비' };
+  const LOCK_LABEL = { self: '직접 준비', cupidon: '큐피돈 준비 요청' };
   const GIFT_LABEL = { yes: '제공함', no: '제공 안 함' };
   const CRIT_LABEL = { no_slip: '식권 미수령 하객', all: '하객 모두', other: '기타' };
   const LINK_LABEL = { consult_only: '상담 채팅으로만 받기', openchat: '오픈 채팅으로 받기' };
@@ -685,7 +696,7 @@ async function submitSurvey() {
     readyBag: READY_LABEL[d.readyBag] || d.readyBag,
     policy5m: POLICY_LABEL[d.policy5m] || d.policy5m,
     slipManager: d.slipManager,
-    slipManagerPhone: d.slipManagerPhone,
+    slipManagerPhone: '',   // 삭제됨 (기존 GAS 컬럼 호환용 빈값 전송)
     slipTotal: d.slipTotal,
     bankAccount: d.bankAccount,
     lockType: LOCK_LABEL[d.lockType] || d.lockType,
