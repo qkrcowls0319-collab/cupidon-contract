@@ -1,4 +1,4 @@
-import { SHEETS_WEBHOOK_URLS } from '../config.js';
+import { SURVEY_WEBHOOK_URL } from '../config.js';
 
 // ============================================
 // 축의대 D-7 확인 설문 — 카드 wizard
@@ -658,7 +658,6 @@ async function submitSurvey() {
 
   const d = state.data;
   const payload = {
-    type: 'survey_d7',
     submittedAt: d.submittedAt,
     submissionId: d.submissionId,
     product: PRODUCT_LABEL[d.product] || d.product,
@@ -691,8 +690,15 @@ async function submitSurvey() {
     freeNote: d.freeNote,
   };
 
+  if (!SURVEY_WEBHOOK_URL) {
+    state.submission.error = 'SURVEY_WEBHOOK_URL이 설정되지 않았습니다. config.js를 확인해주세요.';
+    state.submission.status = 'error';
+    render();
+    return;
+  }
+
   try {
-    await fetch(SHEETS_WEBHOOK_URLS.snap, {
+    await fetch(SURVEY_WEBHOOK_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
