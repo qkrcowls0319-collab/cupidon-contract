@@ -4,7 +4,7 @@ import { SURVEY_WEBHOOK_URL } from '../config.js';
 // 축의대 D-7 확인 설문 — 카드 wizard
 // ============================================
 
-const STORAGE_KEY = 'cupidon-survey-session-v1';
+const STORAGE_KEY = 'cupidon-survey-session-v2'; // v1(식사형태 등 구필드) 사용 세션 자동 폐기
 const TOTAL_STEPS = 9;
 
 const DEFAULT_DATA = {
@@ -54,6 +54,8 @@ const DEFAULT_DATA = {
 // 세션 저장/복원
 // ============================================
 function loadSaved() {
+  // 구버전(v1) 세션 자동 정리
+  try { localStorage.removeItem('cupidon-survey-session-v1'); } catch (e) {}
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
