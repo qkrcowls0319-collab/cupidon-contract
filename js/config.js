@@ -296,8 +296,8 @@ export const OWNER_INFO = {
 // 세팅 방법은 README의 "Google Sheets 신청 이력 관리" 섹션 참고
 // URL을 비워두면 해당 카테고리의 자동 저장은 비활성화됨 (계약서 흐름은 정상 작동)
 export const SHEETS_WEBHOOK_URLS = {
-  snap: 'https://script.google.com/macros/s/AKfycbzEFssrdZk6TTGhXmTXNbFmax4C5dQq7ai6625vUmOUcX7O6DYUds9DCA0T4Clw0Ma8KA/exec',
-  chukuidae: 'https://script.google.com/macros/s/AKfycbzEFssrdZk6TTGhXmTXNbFmax4C5dQq7ai6625vUmOUcX7O6DYUds9DCA0T4Clw0Ma8KA/exec', // 스냅 시트에 같이 기록 (패키지 상품 대응)
+  snap: 'https://script.google.com/macros/s/AKfycbxGf5eQk3gB4fO0sfcoGbHGem9AN0r-YzUb2EGq70JW0OIfAAsKfpANXuZ7j2QgYUa2Xg/exec',
+  chukuidae: 'https://script.google.com/macros/s/AKfycbxGf5eQk3gB4fO0sfcoGbHGem9AN0r-YzUb2EGq70JW0OIfAAsKfpANXuZ7j2QgYUa2Xg/exec', // 스냅 시트에 같이 기록 (패키지 상품 대응)
 };
 
 // D-7 설문 전용 webhook URL (완전 별개 시트 · Apps Script)
